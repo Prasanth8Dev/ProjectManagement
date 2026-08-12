@@ -1,0 +1,196 @@
+'use client';
+import { useParams } from 'next/navigation';
+import { motion } from 'framer-motion';
+import { useMemo } from 'react';
+import { addDays, differenceInDays, format, isValid, parseISO, startOfDay } from 'date-fns';
+import { useProject } from '@/hooks/use-projects';
+import { useTasks } from '@/hooks/use-tasks';
+import { PageHeader } from '@/components/layout/page-header';
+import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { ErrorState } from '@/components/ui/error-state';
+import { TASK_PRIORITY_CONFIG } from '@/constants/priorities';
+import { cn } from '@/lib/utils/cn';
+
+const BAR_COLORS: Record<string, string> = {
+  LOW: 'bg-slate-400',
+  MEDIUM: 'bg-blue-500',
+  HIGH: 'bg-orange-500',
+  CRITICAL: 'bg-red-600',
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  TODO: 'bg-slate-400',
+  IN_PROGRESS: 'bg-blue-500',
+  IN_REVIEW: 'bg-purple-500',
+  DONE: 'bg-green-500',
+  CANCELLED: 'bg-gray-300',
+};
+
+function computeRange(
+  projectStart?: string,
+  projectEnd?: string,
+  tasks: any[] = [],
+): { rangeStart: Date; rangeEnd: Date; totalDays: number } {
+  const today = startOfDay(new Date());
+
+  const dates: Date[] = [];
+  if (projectStart && isValid(parseISO(projectStart))) dates.push(parseISO(projectStart));
+  if (projectEnd && isValid(parseISO(projectEnd))) dates.push(parseISO(projectEnd));
+  tasks.forEach((t) => {
+    if (t.startDate && isValid(parseISO(t.startDate))) dates.push(parseISO(t.startDate));
+    if (t.dueDate && isValid(parseISO(t.dueDate))) dates.push(parseISO(t.dueDate));
+  });
+
+  const rangeStart = dates.length > 0 ? dates.reduce((a, b) => (a < b ? a : b)) : addDays(today, -7);
+  const rangeEnd = dates.length > 0 ? dates.reduce((a, b) => (a > b ? a : b)) : addDays(today, 30);
+
+  const totalDays = Math.max(differenceInDays(rangeEnd, rangeStart) + 1, 1);
+
+  return { rangeStart, rangeEnd, totalDays };
+}
+
+export default function ProjectTimelinePage() {
+  const { id } = useParams<{ id: string }>();
+  const { data: projectResp, isLoading: projLoading, isError: projError } = useProject(id);
+  const { data: tasksResp, isLoading: tasksLoading } = useTasks({ projectId: id });
+
+  const project = projectResp?.data;
+  const allTasks: any[] = tasksResp?.data ?? [];
+
+  const { scheduledTasks, unscheduledTasks } = useMemo(() => {
+    const scheduled = allTasks.filter((t) => t.dueDate || t.startDate);
+    const unscheduled = allTasks.filter((t) => !t.dueDate && !t.startDate);
+    return { scheduledTasks: scheduled, unscheduledTasks: unscheduled };
+  }, [allTasks]);
+
+  const { rangeStart, rangeEnd, totalDays } = useMemo(
+    () => computeRange(project?.startDate, project?.endDate, scheduledTasks),
+    [project, scheduledTasks],
+  );
+
+  // Build header labels (every 7 days)
+  const headerLabels = useMemo(() => {
+    const labels = [];
+    for (let i = 0; i < totalDays; i += 7) {
+      labels.push({ offset: i, label: format(addDays(rangeStart, i), 'MMM d') });
+    }
+    return labels;
+  }, [rangeStart, totalDays]);
+
+  const getBarStyle = (task: any) => {
+    const start = task.startDate && isValid(parseISO(task.startDate))
+      ? parseISO(task.startDate)
+      : rangeStart;
+    const end = task.dueDate && isValid(parseISO(task.dueDate))
+      ? parseISO(task.dueDate)
+      : start;
+
+    const offsetDays = Math.max(0, differenceInDays(startOfDay(start), rangeStart));
+    const durationDays = Math.max(1, differenceInDays(startOfDay(end), startOfDay(start)) + 1);
+    const leftPct = (offsetDays / totalDays) * 100;
+    const widthPct = Math.min((durationDays / totalDays) * 100, 100 - leftPct);
+
+    return { left: `${leftPct}%`, width: `${widthPct}%` };
+  };
+
+  if (projError) {
+    return <ErrorState title="Failed to load project" description="Please try again." />;
+  }
+
+  const isLoading = projLoading || tasksLoading;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-6"
+    >
+      <PageHeader
+        title="Timeline"
+        description={`${format(rangeStart, 'MMM d, yyyy')} — ${format(rangeEnd, 'MMM d, yyyy')}`}
+      />
+
+      {isLoading ? (
+        <div className="space-y-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-12 w-full" />
+          ))}
+        </div>
+      ) : (
+        <Card className="overflow-x-auto">
+          <CardContent className="p-0 min-w-[700px]">
+            {/* Header row */}
+            <div className="flex border-b bg-muted/30">
+              <div className="w-48 flex-shrink-0 px-4 py-2 text-xs font-medium text-muted-foreground border-r">
+                Task
+              </div>
+              <div className="flex-1 relative h-8">
+                {headerLabels.map((lbl) => (
+                  <span
+                    key={lbl.offset}
+                    className="absolute top-1/2 -translate-y-1/2 text-xs text-muted-foreground"
+                    style={{ left: `${(lbl.offset / totalDays) * 100}%` }}
+                  >
+                    {lbl.label}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Task rows */}
+            {scheduledTasks.length === 0 && unscheduledTasks.length === 0 ? (
+              <div className="p-8 text-center text-muted-foreground text-sm">
+                No tasks to display on the timeline.
+              </div>
+            ) : null}
+
+            {scheduledTasks.map((task) => {
+              const barStyle = getBarStyle(task);
+              const colorClass = STATUS_COLORS[task.status] ?? 'bg-blue-500';
+              return (
+                <div
+                  key={task.id}
+                  className="flex border-b last:border-b-0 hover:bg-muted/20 transition-colors"
+                >
+                  <div className="w-48 flex-shrink-0 px-4 py-2 text-sm truncate border-r">
+                    {task.title}
+                  </div>
+                  <div className="flex-1 relative h-10 flex items-center">
+                    <div
+                      className={cn('absolute h-5 rounded-full opacity-90', colorClass)}
+                      style={barStyle}
+                      title={`${task.title} — ${task.startDate ?? '?'} → ${task.dueDate ?? '?'}`}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Unscheduled section */}
+            {unscheduledTasks.length > 0 && (
+              <>
+                <div className="px-4 py-2 text-xs font-semibold text-muted-foreground bg-muted/40 border-y">
+                  Unscheduled ({unscheduledTasks.length})
+                </div>
+                {unscheduledTasks.map((task) => (
+                  <div
+                    key={task.id}
+                    className="flex border-b last:border-b-0 hover:bg-muted/20 transition-colors"
+                  >
+                    <div className="w-48 flex-shrink-0 px-4 py-2 text-sm truncate border-r">
+                      {task.title}
+                    </div>
+                    <div className="flex-1 flex items-center px-4 text-xs text-muted-foreground italic">
+                      No dates assigned
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
+          </CardContent>
+        </Card>
+      )}
+    </motion.div>
+  );
+}

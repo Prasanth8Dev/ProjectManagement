@@ -1,0 +1,286 @@
+'use client';
+import { useState } from 'react';
+import { useParams } from 'next/navigation';
+import { motion } from 'framer-motion';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Plus, Trash2, Users } from 'lucide-react';
+import { format } from 'date-fns';
+import { PageHeader } from '@/components/layout/page-header';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyState } from '@/components/ui/empty-state';
+import { ErrorState } from '@/components/ui/error-state';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { useProjectMembers, useAddProjectMember, useRemoveProjectMember } from '@/hooks/use-projects';
+import { useMembers } from '@/hooks/use-members';
+import { useToast } from '@/hooks/use-toast';
+import { extractApiError } from '@/lib/utils/error';
+import { cn } from '@/lib/utils/cn';
+
+const addMemberSchema = z.object({
+  userId: z.string().min(1, 'Please select a user'),
+  role: z.enum(['VIEWER', 'DEVELOPER', 'MANAGER', 'OWNER']),
+});
+
+type AddMemberValues = z.infer<typeof addMemberSchema>;
+
+const ROLE_COLORS: Record<string, string> = {
+  OWNER: 'bg-purple-100 text-purple-700',
+  MANAGER: 'bg-blue-100 text-blue-700',
+  DEVELOPER: 'bg-green-100 text-green-800',
+  VIEWER: 'bg-slate-100 text-slate-700',
+};
+
+export default function ProjectMembersPage() {
+  const { id } = useParams<{ id: string }>();
+  const { toast } = useToast();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [removeTarget, setRemoveTarget] = useState<any | null>(null);
+
+  const { data, isLoading, isError } = useProjectMembers(id);
+  const { data: allMembersResp } = useMembers();
+  const addMember = useAddProjectMember(id);
+  const removeMember = useRemoveProjectMember(id);
+
+  const members = data ?? [];
+  const allUsers = allMembersResp?.data ?? [];
+
+  const form = useForm<AddMemberValues>({
+    resolver: zodResolver(addMemberSchema),
+    defaultValues: { userId: '', role: 'DEVELOPER' as const },
+  });
+
+  const onAddSubmit = async (values: AddMemberValues) => {
+    try {
+      await addMember.mutateAsync(values);
+      toast({ title: 'Member added' });
+      setDialogOpen(false);
+      form.reset();
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Error', description: extractApiError(err) });
+    }
+  };
+
+  const onRemoveConfirm = async () => {
+    if (!removeTarget) return;
+    try {
+      await removeMember.mutateAsync(removeTarget.user?.id ?? removeTarget.userId);
+      toast({ title: 'Member removed' });
+      setRemoveTarget(null);
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Error', description: extractApiError(err) });
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-6"
+    >
+      <PageHeader
+        title="Members"
+        description="Manage who has access to this project."
+        actions={
+          <Button onClick={() => setDialogOpen(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            Add Member
+          </Button>
+        }
+      />
+
+      {isError && (
+        <ErrorState title="Failed to load members" description="Please try again." />
+      )}
+
+      {isLoading && (
+        <div className="space-y-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-14 w-full" />
+          ))}
+        </div>
+      )}
+
+      {!isLoading && !isError && members.length === 0 && (
+        <EmptyState
+          icon={Users}
+          title="No members yet"
+          description="Add members to collaborate on this project."
+          action={{ label: 'Add Member', onClick: () => setDialogOpen(true) }}
+        />
+      )}
+
+      {!isLoading && members.length > 0 && (
+        <div className="border rounded-lg overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Member</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Joined</TableHead>
+                <TableHead className="w-16" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {members.map((m: any) => (
+                <TableRow key={m.id}>
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <Avatar className="w-8 h-8">
+                        <AvatarImage src={m.user?.avatar} alt={m.user?.name} />
+                        <AvatarFallback className="text-xs">
+                          {(m.user?.name ?? 'U').charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="font-medium text-sm">{m.user?.name}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {m.user?.email}
+                  </TableCell>
+                  <TableCell>
+                    <span
+                      className={cn(
+                        'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium',
+                        ROLE_COLORS[m.role] ?? '',
+                      )}
+                    >
+                      {m.role}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {m.joinedAt ? format(new Date(m.joinedAt), 'MMM d, yyyy') : '—'}
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setRemoveTarget(m)}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      {/* Add Member Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Member</DialogTitle>
+          </DialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onAddSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="userId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>User *</FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a user" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {allUsers.map((u: any) => (
+                          <SelectItem key={u.id} value={u.id}>
+                            {u.name} ({u.email})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="role"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Role</FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="VIEWER">Viewer</SelectItem>
+                        <SelectItem value="DEVELOPER">Contributor</SelectItem>
+                        <SelectItem value="MANAGER">Manager</SelectItem>
+                        <SelectItem value="OWNER">Owner</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={addMember.isPending}>
+                  {addMember.isPending ? 'Adding...' : 'Add Member'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Remove Confirm */}
+      <ConfirmDialog
+        open={!!removeTarget}
+        onOpenChange={(open) => !open && setRemoveTarget(null)}
+        title="Remove Member"
+        description={`Remove ${removeTarget?.user?.name} from this project?`}
+        confirmLabel="Remove"
+        onConfirm={onRemoveConfirm}
+        variant="destructive"
+        isLoading={removeMember.isPending}
+      />
+    </motion.div>
+  );
+}

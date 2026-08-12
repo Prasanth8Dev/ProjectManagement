@@ -1,0 +1,342 @@
+'use client';
+import { useState } from 'react';
+import { useParams } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Plus, ChevronDown, ChevronRight, Target } from 'lucide-react';
+import { format } from 'date-fns';
+import { PageHeader } from '@/components/layout/page-header';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyState } from '@/components/ui/empty-state';
+import { ErrorState } from '@/components/ui/error-state';
+import { Card, CardContent } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Progress } from '@/components/ui/progress';
+import { useMilestones, useCreateMilestone, useUpdateMilestone } from '@/hooks/use-milestones';
+import { useToast } from '@/hooks/use-toast';
+import { extractApiError } from '@/lib/utils/error';
+import { cn } from '@/lib/utils/cn';
+
+const milestoneSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  description: z.string().optional(),
+  status: z.enum(['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED', 'AT_RISK']),
+  dueDate: z.string().optional(),
+});
+
+type MilestoneFormValues = z.infer<typeof milestoneSchema>;
+
+const STATUS_COLORS: Record<string, string> = {
+  NOT_STARTED: 'bg-slate-100 text-slate-700',
+  IN_PROGRESS: 'bg-blue-100 text-blue-700',
+  COMPLETED: 'bg-green-100 text-green-700',
+  AT_RISK: 'bg-red-100 text-red-700',
+};
+
+function MilestoneItem({ milestone, onEdit }: { milestone: any; onEdit: (m: any) => void }) {
+  const [expanded, setExpanded] = useState(false);
+  const completedTasks = milestone.tasks?.filter((t: any) => t.status === 'DONE').length ?? 0;
+  const totalTasks = milestone.tasks?.length ?? 0;
+  const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+  return (
+    <Card className="overflow-hidden">
+      <CardContent className="p-4">
+        <div className="flex items-start gap-3">
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="mt-0.5 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {expanded ? (
+              <ChevronDown className="w-4 h-4" />
+            ) : (
+              <ChevronRight className="w-4 h-4" />
+            )}
+          </button>
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2 min-w-0">
+                <h3 className="font-medium truncate">{milestone.name}</h3>
+                <span
+                  className={cn(
+                    'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0',
+                    STATUS_COLORS[milestone.status] ?? '',
+                  )}
+                >
+                  {milestone.status?.replace('_', ' ')}
+                </span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onEdit(milestone)}
+                className="flex-shrink-0"
+              >
+                Edit
+              </Button>
+            </div>
+
+            <div className="mt-2 flex flex-wrap gap-4 text-sm text-muted-foreground">
+              {milestone.dueDate && (
+                <span>Due: {format(new Date(milestone.dueDate), 'MMM d, yyyy')}</span>
+              )}
+              <span>
+                {completedTasks}/{totalTasks} tasks
+              </span>
+            </div>
+
+            <div className="mt-3">
+              <Progress value={progress} className="h-1.5" />
+              <span className="text-xs text-muted-foreground mt-1">{progress}% complete</span>
+            </div>
+
+            <AnimatePresence>
+              {expanded && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="mt-4 overflow-hidden"
+                >
+                  {milestone.description && (
+                    <p className="text-sm text-muted-foreground mb-3">{milestone.description}</p>
+                  )}
+                  {(milestone.tasks?.length ?? 0) === 0 ? (
+                    <p className="text-sm text-muted-foreground">No tasks linked to this milestone.</p>
+                  ) : (
+                    <ul className="space-y-1.5">
+                      {milestone.tasks.map((t: any) => (
+                        <li key={t.id} className="text-sm flex items-center gap-2">
+                          <span
+                            className={cn(
+                              'w-2 h-2 rounded-full flex-shrink-0',
+                              t.status === 'DONE' ? 'bg-green-500' : 'bg-blue-400',
+                            )}
+                          />
+                          {t.title}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+export default function MilestonesPage() {
+  const { id } = useParams<{ id: string }>();
+  const { toast } = useToast();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<any | null>(null);
+
+  const { data, isLoading, isError } = useMilestones(id);
+  const createMilestone = useCreateMilestone(id);
+  const updateMilestone = useUpdateMilestone(id);
+
+  const milestones = data?.data ?? [];
+
+  const form = useForm<MilestoneFormValues>({
+    resolver: zodResolver(milestoneSchema),
+    defaultValues: {
+      name: '',
+      description: '',
+      status: 'NOT_STARTED',
+      dueDate: '',
+    },
+  });
+
+  const openCreate = () => {
+    setEditTarget(null);
+    form.reset({ name: '', description: '', status: 'NOT_STARTED', dueDate: '' });
+    setDialogOpen(true);
+  };
+
+  const openEdit = (milestone: any) => {
+    setEditTarget(milestone);
+    form.reset({
+      name: milestone.name,
+      description: milestone.description ?? '',
+      status: milestone.status,
+      dueDate: milestone.dueDate
+        ? format(new Date(milestone.dueDate), 'yyyy-MM-dd')
+        : '',
+    });
+    setDialogOpen(true);
+  };
+
+  const onSubmit = async (values: MilestoneFormValues) => {
+    try {
+      if (editTarget) {
+        await updateMilestone.mutateAsync({ id: editTarget.id, data: values });
+        toast({ title: 'Milestone updated' });
+      } else {
+        await createMilestone.mutateAsync(values);
+        toast({ title: 'Milestone created' });
+      }
+      setDialogOpen(false);
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Error', description: extractApiError(err) });
+    }
+  };
+
+  const isPending = createMilestone.isPending || updateMilestone.isPending;
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Milestones"
+        description="Track major goals and checkpoints in this project."
+        actions={
+          <Button onClick={openCreate}>
+            <Plus className="w-4 h-4 mr-2" />
+            Add Milestone
+          </Button>
+        }
+      />
+
+      {isError && (
+        <ErrorState title="Failed to load milestones" description="Please try again." />
+      )}
+
+      {isLoading && (
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 w-full" />
+          ))}
+        </div>
+      )}
+
+      {!isLoading && !isError && milestones.length === 0 && (
+        <EmptyState
+          icon={Target}
+          title="No milestones yet"
+          description="Add milestones to track key project goals."
+          action={{ label: 'Add Milestone', onClick: openCreate }}
+        />
+      )}
+
+      {!isLoading && milestones.length > 0 && (
+        <div className="space-y-3">
+          {milestones.map((m: any) => (
+            <MilestoneItem key={m.id} milestone={m} onEdit={openEdit} />
+          ))}
+        </div>
+      )}
+
+      {/* Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editTarget ? 'Edit Milestone' : 'Add Milestone'}</DialogTitle>
+          </DialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Name *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g. Beta Launch" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <Textarea rows={3} {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="status"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Status</FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="NOT_STARTED">Not Started</SelectItem>
+                        <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
+                        <SelectItem value="COMPLETED">Completed</SelectItem>
+                        <SelectItem value="AT_RISK">At Risk</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="dueDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Due Date</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isPending}>
+                  {isPending ? 'Saving...' : editTarget ? 'Update' : 'Create'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

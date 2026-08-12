@@ -1,0 +1,35 @@
+'use client';
+import { useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
+import { ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
+import { PageHeader } from '@/components/layout/page-header';
+import { Button } from '@/components/ui/button';
+import { UpdateForm } from '@/components/features/updates/update-form';
+import { ROUTES } from '@/constants/routes';
+
+export default function NewUpdatePage() {
+  const router = useRouter();
+
+  const onSuccess = () => {
+    router.push(ROUTES.UPDATES);
+  };
+
+  return (
+    <div className="space-y-6 max-w-3xl">
+      <PageHeader
+        title="Submit Daily Update"
+        description="Share your progress, plans, and any blockers with your team."
+        actions={
+          <Button variant="outline" asChild>
+            <Link href={ROUTES.UPDATES}>
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back
+            </Link>
+          </Button>
+        }
+      />
+      <UpdateForm onSuccess={onSuccess} />
+    </div>
+  );
+}

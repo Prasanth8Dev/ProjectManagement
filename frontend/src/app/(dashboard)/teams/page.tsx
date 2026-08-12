@@ -1,0 +1,86 @@
+'use client';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
+import Link from 'next/link';
+import { Plus, Users } from 'lucide-react';
+import { PageHeader } from '@/components/layout/page-header';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { TeamCard } from '@/components/features/teams/team-card';
+import { SkeletonCard } from '@/components/ui/skeleton-card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { ErrorState } from '@/components/ui/error-state';
+import { useTeams } from '@/hooks/use-teams';
+import { ROUTES } from '@/constants/routes';
+
+export default function TeamsPage() {
+  const router = useRouter();
+  const [search, setSearch] = useState('');
+  const { data, isLoading, isError, error } = useTeams({ search: search || undefined });
+  const teams = data?.data ?? [];
+
+  const filtered = search
+    ? teams.filter((t: any) =>
+        t.name.toLowerCase().includes(search.toLowerCase()),
+      )
+    : teams;
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Teams"
+        description="Organise your people into focused teams."
+        actions={
+          <Button asChild>
+            <Link href={ROUTES.TEAM_NEW}>
+              <Plus className="w-4 h-4 mr-2" />
+              New Team
+            </Link>
+          </Button>
+        }
+      />
+
+      <div className="flex">
+        <Input
+          placeholder="Search teams..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="max-w-xs"
+        />
+      </div>
+
+      {isError && (
+        <ErrorState
+          title="Failed to load teams"
+          description={(error as Error)?.message ?? 'Something went wrong'}
+        />
+      )}
+
+      {isLoading && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <SkeletonCard key={i} />
+          ))}
+        </div>
+      )}
+
+      {!isLoading && !isError && filtered.length === 0 && (
+        <EmptyState
+          icon={Users}
+          title="No teams yet"
+          description="Create a team to start organising your members."
+          action={{ label: 'Create your first team', onClick: () => router.push(ROUTES.TEAM_NEW) }}
+        />
+      )}
+
+      {!isLoading && !isError && filtered.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+          {filtered.map((team: any) => (
+            <TeamCard key={team.id} team={team} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

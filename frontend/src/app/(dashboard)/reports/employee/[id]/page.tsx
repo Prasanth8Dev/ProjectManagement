@@ -1,0 +1,156 @@
+'use client';
+import { useParams } from 'next/navigation';
+import { motion } from 'framer-motion';
+import { format } from 'date-fns';
+import { PageHeader } from '@/components/layout/page-header';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { ErrorState } from '@/components/ui/error-state';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { UpdateCard } from '@/components/features/updates/update-card';
+import { useEmployeeReport } from '@/hooks/use-reports';
+import { useMember } from '@/hooks/use-members';
+import { ListTodo, CheckCircle2, Clock, FileText } from 'lucide-react';
+
+function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: number | string; color: string }) {
+  return (
+    <Card>
+      <CardContent className="pt-6">
+        <div className="flex items-center gap-3">
+          <div className={`p-3 rounded-full ${color}`}>{icon}</div>
+          <div>
+            <p className="text-2xl font-bold">{value}</p>
+            <p className="text-sm text-muted-foreground">{label}</p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+export default function EmployeeReportPage() {
+  const { id } = useParams<{ id: string }>();
+  const { data: memberResp } = useMember(id);
+  const { data: reportResp, isLoading, isError } = useEmployeeReport(id);
+
+  const member = memberResp?.data;
+  const report = reportResp?.data;
+
+  if (isError) {
+    return <ErrorState title="Failed to load employee report" description="Please try again." />;
+  }
+
+  return (
+    <div className="space-y-6 max-w-4xl">
+      {/* Header */}
+      {isLoading ? (
+        <div className="flex items-center gap-4">
+          <Skeleton className="w-16 h-16 rounded-full" />
+          <div className="space-y-2">
+            <Skeleton className="h-6 w-40" />
+            <Skeleton className="h-4 w-28" />
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center gap-4">
+          <Avatar className="w-16 h-16">
+            <AvatarImage src={member?.avatar} />
+            <AvatarFallback className="text-xl">
+              {(member?.name ?? 'U').charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <PageHeader
+              title={`${member?.name ?? 'Employee'} — Report`}
+              description={`${member?.jobTitle ?? ''}${member?.department ? ` · ${member.department}` : ''}`}
+            />
+          </div>
+        </div>
+      )}
+
+      {isLoading ? (
+        <div className="space-y-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 w-full" />
+          ))}
+        </div>
+      ) : (
+        <>
+          {/* Stats */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard
+              icon={<ListTodo className="w-5 h-5 text-blue-600" />}
+              label="Tasks Assigned"
+              value={report?.stats?.tasksAssigned ?? 0}
+              color="bg-blue-50"
+            />
+            <StatCard
+              icon={<CheckCircle2 className="w-5 h-5 text-green-600" />}
+              label="Tasks Completed"
+              value={report?.stats?.tasksCompleted ?? 0}
+              color="bg-green-50"
+            />
+            <StatCard
+              icon={<Clock className="w-5 h-5 text-yellow-600" />}
+              label="Hours Worked"
+              value={`${report?.stats?.hoursWorked ?? 0}h`}
+              color="bg-yellow-50"
+            />
+            <StatCard
+              icon={<FileText className="w-5 h-5 text-purple-600" />}
+              label="Updates Submitted"
+              value={report?.stats?.updatesCount ?? 0}
+              color="bg-purple-50"
+            />
+          </div>
+
+          {/* Weekly bar chart — tasks completed per day */}
+          {(report?.weeklyStats?.length ?? 0) > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Tasks Completed (Last 7 Days)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-end gap-2 h-32">
+                  {report?.weeklyStats?.map((day: any) => {
+                    const max = Math.max(...(report.weeklyStats?.map((d: any) => d.count) ?? [1]), 1);
+                    const heightPct = max > 0 ? (day.count / max) * 100 : 0;
+                    return (
+                      <div
+                        key={day.date}
+                        className="flex-1 flex flex-col items-center gap-1"
+                        title={`${format(new Date(day.date), 'EEE')}: ${day.count} tasks`}
+                      >
+                        <span className="text-xs text-muted-foreground">{day.count}</span>
+                        <div
+                          className="w-full bg-primary/80 rounded-t"
+                          style={{ height: `${Math.max(heightPct, 4)}%` }}
+                        />
+                        <span className="text-xs text-muted-foreground">
+                          {format(new Date(day.date), 'EEE')}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Recent Updates */}
+          {(report?.recentUpdates?.length ?? 0) > 0 && (
+            <div>
+              <h2 className="text-base font-semibold mb-3">Recent Updates</h2>
+              <div className="space-y-3">
+                {report?.recentUpdates?.slice(0, 3).map((update: any) => (
+                  <UpdateCard key={update.id} update={update} />
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}

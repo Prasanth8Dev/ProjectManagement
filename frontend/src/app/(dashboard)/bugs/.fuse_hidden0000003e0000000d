@@ -1,0 +1,294 @@
+'use client';
+import { Suspense, useState, useCallback } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { motion } from 'framer-motion';
+import { Plus, Bug } from 'lucide-react';
+import { PageHeader } from '@/components/layout/page-header';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyState } from '@/components/ui/empty-state';
+import { ErrorState } from '@/components/ui/error-state';
+import { BugCard } from '@/components/features/bugs/bug-card';
+import { BugFormSheet } from '@/components/features/bugs/bug-form-sheet';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
+import { useBugs } from '@/hooks/use-bugs';
+import { useMembers } from '@/hooks/use-members';
+import { useDebounce } from '@/hooks/use-debounce';
+
+const PAGE_SIZE = 20;
+
+const STATUS_OPTIONS = [
+  { value: 'all', label: 'All Statuses' },
+  { value: 'OPEN', label: 'Open' },
+  { value: 'IN_PROGRESS', label: 'In Progress' },
+  { value: 'IN_REVIEW', label: 'In Review' },
+  { value: 'RESOLVED', label: 'Resolved' },
+  { value: 'CLOSED', label: 'Closed' },
+  { value: 'WONT_FIX', label: "Won't Fix" },
+];
+
+const SEVERITY_OPTIONS = [
+  { value: 'all', label: 'All Severities' },
+  { value: 'LOW', label: 'Low' },
+  { value: 'MEDIUM', label: 'Medium' },
+  { value: 'HIGH', label: 'High' },
+  { value: 'CRITICAL', label: 'Critical' },
+];
+
+const PRIORITY_OPTIONS = [
+  { value: 'all', label: 'All Priorities' },
+  { value: 'LOW', label: 'Low' },
+  { value: 'MEDIUM', label: 'Medium' },
+  { value: 'HIGH', label: 'High' },
+  { value: 'URGENT', label: 'Urgent' },
+];
+
+function BugsPageInner() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [searchInput, setSearchInput] = useState(searchParams.get('search') ?? '');
+  const debouncedSearch = useDebounce(searchInput, 350);
+
+  const status = searchParams.get('status') ?? undefined;
+  const severity = searchParams.get('severity') ?? undefined;
+  const priority = searchParams.get('priority') ?? undefined;
+  const assigneeId = searchParams.get('assigneeId') ?? undefined;
+  const page = parseInt(searchParams.get('page') ?? '1', 10);
+
+  const { data: membersResp } = useMembers({ limit: 100 } as any);
+  const allUsers = membersResp?.data ?? [];
+
+  const setParam = useCallback(
+    (key: string, value: string | undefined) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (value && value !== 'all') {
+        params.set(key, value);
+      } else {
+        params.delete(key);
+      }
+      params.delete('page');
+      router.push(`?${params.toString()}`);
+    },
+    [router, searchParams],
+  );
+
+  const setPage = (p: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('page', String(p));
+    router.push(`?${params.toString()}`);
+  };
+
+  const { data, isLoading, isError } = useBugs({
+    search: debouncedSearch || undefined,
+    status,
+    severity,
+    priority,
+    assigneeId,
+    page,
+    limit: PAGE_SIZE,
+  });
+
+  const bugs = data?.data ?? [];
+  const total = data?.meta?.total ?? 0;
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+
+  // Summary counts by status
+  const openCount = bugs.filter((b) => b.status === 'OPEN').length;
+  const criticalCount = bugs.filter((b) => b.severity === 'CRITICAL').length;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-6"
+    >
+      <PageHeader
+        title="Bug Tracker"
+        description={`${total} bug${total !== 1 ? 's' : ''} tracked.`}
+        actions={
+          <Button onClick={() => setIsCreateOpen(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            Report Bug
+          </Button>
+        }
+      />
+
+      {/* Stats strip */}
+      {!isLoading && total > 0 && (
+        <div className="flex flex-wrap gap-3 text-sm">
+          <span className="px-3 py-1.5 rounded-lg bg-red-50 text-red-700 border border-red-100 dark:bg-red-900/20 dark:text-red-400 dark:border-red-900/30 font-medium">
+            {openCount} Open
+          </span>
+          {criticalCount > 0 && (
+            <span className="px-3 py-1.5 rounded-lg bg-red-100 text-red-800 border border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-900/40 font-semibold">
+              {criticalCount} Critical
+            </span>
+          )}
+          <span className="px-3 py-1.5 rounded-lg bg-muted text-muted-foreground border border-border font-medium">
+            {total} Total
+          </span>
+        </div>
+      )}
+
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <Input
+          placeholder="Search bugs..."
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          className="sm:max-w-xs"
+        />
+        <Select
+          value={status ?? 'all'}
+          onValueChange={(v) => setParam('status', v)}
+        >
+          <SelectTrigger className="w-full sm:w-40">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            {STATUS_OPTIONS.map((o) => (
+              <SelectItem key={o.value} value={o.value}>
+                {o.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select
+          value={severity ?? 'all'}
+          onValueChange={(v) => setParam('severity', v)}
+        >
+          <SelectTrigger className="w-full sm:w-40">
+            <SelectValue placeholder="Severity" />
+          </SelectTrigger>
+          <SelectContent>
+            {SEVERITY_OPTIONS.map((o) => (
+              <SelectItem key={o.value} value={o.value}>
+                {o.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select
+          value={priority ?? 'all'}
+          onValueChange={(v) => setParam('priority', v)}
+        >
+          <SelectTrigger className="w-full sm:w-40">
+            <SelectValue placeholder="Priority" />
+          </SelectTrigger>
+          <SelectContent>
+            {PRIORITY_OPTIONS.map((o) => (
+              <SelectItem key={o.value} value={o.value}>
+                {o.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select
+          value={assigneeId ?? 'all'}
+          onValueChange={(v) => setParam('assigneeId', v)}
+        >
+          <SelectTrigger className="w-full sm:w-44">
+            <SelectValue placeholder="Assignee" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Assignees</SelectItem>
+            {(allUsers as any[]).map((u: any) => (
+              <SelectItem key={u.id} value={u.id}>
+                {u.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {isError && (
+        <ErrorState
+          title="Failed to load bugs"
+          description="Something went wrong while fetching bugs."
+        />
+      )}
+
+      {isLoading && (
+        <div className="space-y-3">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <Skeleton key={i} className="h-[110px] w-full rounded-lg" />
+          ))}
+        </div>
+      )}
+
+      {!isLoading && !isError && bugs.length === 0 && (
+        <EmptyState
+          icon={Bug}
+          title="No bugs found"
+          description={
+            total === 0 && !debouncedSearch && !status && !severity
+              ? 'No bugs reported yet. Click "Report Bug" to file the first one.'
+              : 'Try adjusting your filters.'
+          }
+          action={{ label: 'Report Bug', onClick: () => setIsCreateOpen(true) }}
+        />
+      )}
+
+      {!isLoading && !isError && bugs.length > 0 && (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {bugs.map((bug) => (
+              <BugCard key={bug.id} bug={bug} />
+            ))}
+          </div>
+
+          {totalPages > 1 && (
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={() => setPage(Math.max(1, page - 1))}
+                    aria-disabled={page <= 1}
+                    className={page <= 1 ? 'pointer-events-none opacity-50' : ''}
+                  />
+                </PaginationItem>
+                <PaginationItem>
+                  <span className="text-sm text-muted-foreground px-4">
+                    Page {page} of {totalPages}
+                  </span>
+                </PaginationItem>
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={() => setPage(Math.min(totalPages, page + 1))}
+                    aria-disabled={page >= totalPages}
+                    className={page >= totalPages ? 'pointer-events-none opacity-50' : ''}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          )}
+        </>
+      )}
+
+      <BugFormSheet open={isCreateOpen} onOpenChange={setIsCreateOpen} />
+    </motion.div>
+  );
+}
+
+export default function BugsPage() {
+  return (
+    <Suspense>
+      <BugsPageInner />
+    </Suspense>
+  );
+}

@@ -1,0 +1,386 @@
+'use client';
+import { useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { AlertTriangle } from 'lucide-react';
+import { PageHeader } from '@/components/layout/page-header';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { Skeleton } from '@/components/ui/skeleton';
+import { ErrorState } from '@/components/ui/error-state';
+import { useProject, useUpdateProject, useDeleteProject, useArchiveProject } from '@/hooks/use-projects';
+import { useToast } from '@/hooks/use-toast';
+import { extractApiError } from '@/lib/utils/error';
+import { ROUTES } from '@/constants/routes';
+
+const editProjectSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  description: z.string().optional(),
+  status: z.enum(['PLANNING', 'ACTIVE', 'ON_HOLD', 'COMPLETED', 'ARCHIVED', 'CANCELLED']),
+  priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']),
+  color: z.string(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+});
+
+type EditFormValues = z.infer<typeof editProjectSchema>;
+
+const COLOR_OPTIONS = [
+  '#6366f1', '#8b5cf6', '#ec4899', '#f43f5e',
+  '#ef4444', '#f97316', '#eab308', '#22c55e',
+  '#10b981', '#06b6d4', '#3b82f6', '#64748b',
+];
+
+export default function ProjectSettingsPage() {
+  const { id } = useParams<{ id: string }>();
+  const router = useRouter();
+  const { toast } = useToast();
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteConfirmName, setDeleteConfirmName] = useState('');
+
+  const { data: projectResp, isLoading, isError } = useProject(id);
+  const updateProject = useUpdateProject(id);
+  const deleteProject = useDeleteProject(id);
+  const archiveProject = useArchiveProject(id);
+
+  const project = projectResp?.data;
+
+  const form = useForm<EditFormValues>({
+    resolver: zodResolver(editProjectSchema),
+    values: {
+      name: project?.name ?? '',
+      description: project?.description ?? '',
+      status: project?.status ?? 'PLANNING',
+      priority: project?.priority ?? 'MEDIUM',
+      color: project?.color ?? '#6366f1',
+      startDate: project?.startDate ? project.startDate.split('T')[0] : '',
+      endDate: project?.endDate ? project.endDate.split('T')[0] : '',
+    },
+  });
+
+  const onSave = async (values: EditFormValues) => {
+    try {
+      await updateProject.mutateAsync(values);
+      toast({ title: 'Project updated' });
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Error', description: extractApiError(err) });
+    }
+  };
+
+  const onArchive = async () => {
+    try {
+      await archiveProject.mutateAsync();
+      toast({ title: 'Project archived' });
+      router.push(ROUTES.PROJECTS);
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Error', description: extractApiError(err) });
+    }
+  };
+
+  const onDelete = async () => {
+    try {
+      await deleteProject.mutateAsync();
+      toast({ title: 'Project deleted' });
+      router.push(ROUTES.PROJECTS);
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Error', description: extractApiError(err) });
+    }
+  };
+
+  if (isError) {
+    return <ErrorState title="Failed to load project" description="Please try again." />;
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-8 max-w-2xl"
+    >
+      <PageHeader title="Project Settings" description="Update this project's configuration." />
+
+      {isLoading ? (
+        <div className="space-y-4">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-12 w-full" />
+          ))}
+        </div>
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>General</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSave)} className="space-y-6">
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Project Name *</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description</FormLabel>
+                      <FormControl>
+                        <Textarea rows={3} {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="status"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Status</FormLabel>
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {['PLANNING', 'ACTIVE', 'ON_HOLD', 'COMPLETED', 'CANCELLED'].map((s) => (
+                              <SelectItem key={s} value={s}>
+                                {s.replace('_', ' ')}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="priority"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Priority</FormLabel>
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].map((p) => (
+                              <SelectItem key={p} value={p}>
+                                {p}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="color"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Color</FormLabel>
+                      <FormControl>
+                        <div className="flex flex-wrap gap-2 mt-1">
+                          {COLOR_OPTIONS.map((color) => (
+                            <button
+                              key={color}
+                              type="button"
+                              onClick={() => field.onChange(color)}
+                              className="w-8 h-8 rounded-full border-2 transition-all"
+                              style={{
+                                backgroundColor: color,
+                                borderColor: field.value === color ? '#000' : 'transparent',
+                                transform: field.value === color ? 'scale(1.2)' : 'scale(1)',
+                              }}
+                            />
+                          ))}
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="startDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Start Date</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="endDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>End Date</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <Button type="submit" disabled={updateProject.isPending}>
+                  {updateProject.isPending ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </form>
+            </Form>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Danger Zone */}
+      <Card className="border-destructive/50">
+        <CardHeader>
+          <div className="flex items-center gap-2 text-destructive">
+            <AlertTriangle className="w-5 h-5" />
+            <CardTitle>Danger Zone</CardTitle>
+          </div>
+          <CardDescription>
+            These actions are irreversible. Please proceed with caution.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between p-4 border rounded-lg">
+            <div>
+              <p className="font-medium">Archive Project</p>
+              <p className="text-sm text-muted-foreground">
+                Hides the project from the active list but keeps all data.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => setArchiveDialogOpen(true)}
+              disabled={archiveProject.isPending}
+            >
+              Archive
+            </Button>
+          </div>
+
+          <div className="flex items-center justify-between p-4 border border-destructive/30 rounded-lg bg-destructive/5">
+            <div>
+              <p className="font-medium text-destructive">Delete Project</p>
+              <p className="text-sm text-muted-foreground">
+                Permanently delete this project and all its tasks. This cannot be undone.
+              </p>
+            </div>
+            <Button
+              variant="destructive"
+              onClick={() => setDeleteDialogOpen(true)}
+              disabled={deleteProject.isPending}
+            >
+              Delete
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Archive Confirm */}
+      <ConfirmDialog
+        open={archiveDialogOpen}
+        onOpenChange={setArchiveDialogOpen}
+        title="Archive Project"
+        description={`Are you sure you want to archive "${project?.name}"? You can restore it later.`}
+        confirmLabel="Archive"
+        onConfirm={onArchive}
+        isLoading={archiveProject.isPending}
+      />
+
+      {/* Delete Confirm with name input */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-destructive">Delete Project</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              This action is permanent and cannot be undone. All tasks, comments, and data
+              associated with this project will be deleted.
+            </p>
+            <div>
+              <label className="text-sm font-medium">
+                Type <strong>{project?.name}</strong> to confirm:
+              </label>
+              <Input
+                className="mt-2"
+                value={deleteConfirmName}
+                onChange={(e) => setDeleteConfirmName(e.target.value)}
+                placeholder={project?.name}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={deleteConfirmName !== project?.name || deleteProject.isPending}
+              onClick={onDelete}
+            >
+              {deleteProject.isPending ? 'Deleting...' : 'Delete Project'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </motion.div>
+  );
+}

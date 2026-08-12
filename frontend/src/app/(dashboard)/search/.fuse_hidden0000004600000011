@@ -1,0 +1,89 @@
+'use client';
+import { Suspense, useEffect, useRef, useState, useCallback } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { motion } from 'framer-motion';
+import { Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { SearchResults } from '@/components/features/search/search-results';
+
+type SearchType = 'all' | 'task' | 'project' | 'user' | 'team';
+
+function SearchPageInner() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const q = searchParams.get('q') ?? '';
+  const type = (searchParams.get('type') ?? 'all') as SearchType;
+
+  const [inputValue, setInputValue] = useState(q);
+
+  // Focus on mount
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  // Debounced URL sync
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const params = new URLSearchParams();
+      if (inputValue) params.set('q', inputValue);
+      if (type && type !== 'all') params.set('type', type);
+      router.replace(`?${params.toString()}`);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [inputValue, router, type]);
+
+  const setType = useCallback(
+    (newType: string) => {
+      const params = new URLSearchParams();
+      if (q) params.set('q', q);
+      if (newType && newType !== 'all') params.set('type', newType);
+      router.push(`?${params.toString()}`);
+    },
+    [router, q],
+  );
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-6"
+    >
+      {/* Large search input */}
+      <div className="relative">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+        <Input
+          ref={inputRef}
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          placeholder="Search tasks, projects, members..."
+          className="pl-12 h-14 text-lg rounded-xl"
+        />
+      </div>
+
+      {/* Type filter tabs */}
+      <Tabs value={type} onValueChange={setType}>
+        <TabsList>
+          <TabsTrigger value="all">All</TabsTrigger>
+          <TabsTrigger value="task">Tasks</TabsTrigger>
+          <TabsTrigger value="project">Projects</TabsTrigger>
+          <TabsTrigger value="user">Members</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value={type} className="mt-4">
+          <SearchResults query={q} type={type} />
+        </TabsContent>
+      </Tabs>
+    </motion.div>
+  );
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense>
+      <SearchPageInner />
+    </Suspense>
+  );
+}

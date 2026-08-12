@@ -1,0 +1,170 @@
+'use client';
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import Link from 'next/link';
+import { Users, UserPlus } from 'lucide-react';
+import { PageHeader } from '@/components/layout/page-header';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Card, CardContent } from '@/components/ui/card';
+import { SkeletonCard } from '@/components/ui/skeleton-card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { ErrorState } from '@/components/ui/error-state';
+import { InviteUserSheet } from '@/components/features/members/invite-user-sheet';
+import { useMembers } from '@/hooks/use-members';
+import { useTeams } from '@/hooks/use-teams';
+import { useAuthStore } from '@/stores/auth.store';
+import { ROUTES } from '@/constants/routes';
+
+const CAN_ADD_MEMBERS = ['ADMIN', 'MANAGER', 'PROJECT_MANAGER'];
+
+const ROLE_COLORS: Record<string, string> = {
+  ADMIN:           'bg-red-100 text-red-700',
+  MANAGER:         'bg-blue-100 text-blue-700',
+  PROJECT_MANAGER: 'bg-indigo-100 text-indigo-700',
+  DEVELOPER:       'bg-green-100 text-green-700',
+  VIEWER:          'bg-slate-100 text-slate-700',
+};
+
+export default function MembersPage() {
+  const [search, setSearch]         = useState('');
+  const [role, setRole]             = useState('all');
+  const [teamId, setTeamId]         = useState('all');
+  const [inviteOpen, setInviteOpen] = useState(false);
+
+  const currentUser = useAuthStore((s) => s.currentUser);
+  const canAddMember = CAN_ADD_MEMBERS.includes(currentUser?.role ?? '');
+
+  const { data, isLoading, isError, error } = useMembers({
+    search:  search || undefined,
+    role:    role !== 'all' ? role : undefined,
+    teamId:  teamId !== 'all' ? teamId : undefined,
+  });
+
+  const { data: teamsResp } = useTeams();
+
+  const members = data?.data ?? [];
+  const teams   = teamsResp?.data ?? [];
+  const total   = data?.meta?.total ?? members.length;
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Team Members"
+        description={`${total} member${total !== 1 ? 's' : ''} in your organisation.`}
+        actions={
+          canAddMember ? (
+            <Button onClick={() => setInviteOpen(true)}>
+              <UserPlus className="mr-2 h-4 w-4" />
+              Add Member
+            </Button>
+          ) : undefined
+        }
+      />
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3">
+        <Input
+          placeholder="Search members..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="max-w-xs"
+        />
+        <Select value={role} onValueChange={setRole}>
+          <SelectTrigger className="w-40">
+            <SelectValue placeholder="All Roles" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Roles</SelectItem>
+            <SelectItem value="ADMIN">Admin</SelectItem>
+            <SelectItem value="MANAGER">Manager</SelectItem>
+            <SelectItem value="DEVELOPER">Developer</SelectItem>
+            <SelectItem value="VIEWER">Viewer</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={teamId} onValueChange={setTeamId}>
+          <SelectTrigger className="w-44">
+            <SelectValue placeholder="All Teams" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Teams</SelectItem>
+            {teams.map((t: any) => (
+              <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* States */}
+      {isError && (
+        <ErrorState
+          title="Failed to load members"
+          description={(error as Error)?.message ?? 'Something went wrong'}
+        />
+      )}
+
+      {isLoading && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)}
+        </div>
+      )}
+
+      {!isLoading && !isError && members.length === 0 && (
+        <EmptyState
+          icon={Users}
+          title="No members found"
+          description="Add your first member using the button above, or try adjusting the filters."
+          action={canAddMember ? { label: 'Add Member', onClick: () => setInviteOpen(true) } : undefined}
+        />
+      )}
+
+      {/* Member grid */}
+      {!isLoading && !isError && members.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {members.map((member: any) => (
+            <Link key={member.id} href={ROUTES.MEMBER(member.id)}>
+              <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
+                <CardContent className="pt-6">
+                  <div className="flex flex-col items-center text-center gap-3">
+                    <Avatar className="w-14 h-14">
+                      <AvatarImage src={member.avatar} alt={member.name} />
+                      <AvatarFallback className="text-lg font-semibold">
+                        {(member.name ?? 'U').split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-semibold">{member.name}</p>
+                      {member.jobTitle && (
+                        <p className="text-xs text-muted-foreground mt-0.5">{member.jobTitle}</p>
+                      )}
+                      {member.department && (
+                        <p className="text-xs text-muted-foreground">{member.department}</p>
+                      )}
+                    </div>
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${ROLE_COLORS[member.role] ?? 'bg-gray-100 text-gray-700'}`}>
+                      {(member.role ?? '').replace(/_/g, ' ')}
+                    </span>
+                    <div className="flex gap-3 text-xs text-muted-foreground">
+                      {(member._count?.assignedTasks ?? 0) > 0 && (
+                        <span>{member._count.assignedTasks} task{member._count.assignedTasks !== 1 ? 's' : ''}</span>
+                      )}
+                      {(member._count?.projectMemberships ?? 0) > 0 && (
+                        <span>{member._count.projectMemberships} project{member._count.projectMemberships !== 1 ? 's' : ''}</span>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      )}
+
+      <InviteUserSheet open={inviteOpen} onOpenChange={setInviteOpen} />
+    </div>
+  );
+}

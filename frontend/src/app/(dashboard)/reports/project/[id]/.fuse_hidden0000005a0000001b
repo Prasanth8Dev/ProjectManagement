@@ -1,0 +1,196 @@
+'use client';
+import { useParams } from 'next/navigation';
+import { motion } from 'framer-motion';
+import { PageHeader } from '@/components/layout/page-header';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { ErrorState } from '@/components/ui/error-state';
+import { Progress } from '@/components/ui/progress';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { useProjectReport } from '@/hooks/use-reports';
+import { useProject } from '@/hooks/use-projects';
+import { CheckCircle2, AlertTriangle, Target, Users } from 'lucide-react';
+
+const STATUS_COLORS: Record<string, string> = {
+  TODO: 'bg-slate-200',
+  IN_PROGRESS: 'bg-blue-400',
+  IN_REVIEW: 'bg-purple-400',
+  DONE: 'bg-green-500',
+  CANCELLED: 'bg-gray-300',
+};
+
+export default function ProjectReportPage() {
+  const { id } = useParams<{ id: string }>();
+  const { data: projectResp } = useProject(id);
+  const { data: reportResp, isLoading, isError } = useProjectReport(id);
+
+  const project = projectResp?.data;
+  const report = reportResp?.data;
+
+  if (isError) {
+    return <ErrorState title="Failed to load project report" description="Please try again." />;
+  }
+
+  const completionRate = report?.stats?.completionRate ?? 0;
+  const taskBreakdown: Array<{ status: string; count: number }> = report?.taskBreakdown ?? [];
+  const totalTasksForBreakdown = taskBreakdown.reduce((s, t) => s + t.count, 0) || 1;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-6 max-w-4xl"
+    >
+      <PageHeader
+        title={`Project Report: ${project?.name ?? '...'}`}
+        description="Health overview and contribution analysis."
+      />
+
+      {isLoading ? (
+        <div className="space-y-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 w-full" />
+          ))}
+        </div>
+      ) : (
+        <>
+          {/* Stats */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card>
+              <CardContent className="pt-6 text-center">
+                <p className="text-3xl font-bold text-green-600">{completionRate}%</p>
+                <p className="text-sm text-muted-foreground mt-1">Completion Rate</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6 text-center">
+                <p className="text-3xl font-bold">{report?.stats?.totalTasks ?? 0}</p>
+                <p className="text-sm text-muted-foreground mt-1">Total Tasks</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6 text-center">
+                <p className="text-3xl font-bold text-red-600">{report?.stats?.overdueTasks ?? 0}</p>
+                <p className="text-sm text-muted-foreground mt-1">Overdue Tasks</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6 text-center">
+                <p className="text-3xl font-bold text-blue-600">{report?.stats?.openMilestones ?? 0}</p>
+                <p className="text-sm text-muted-foreground mt-1">Open Milestones</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Task Breakdown */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Task Breakdown by Status</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {taskBreakdown.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No tasks found.</p>
+              ) : (
+                taskBreakdown.map((row) => {
+                  const pct = Math.round((row.count / totalTasksForBreakdown) * 100);
+                  return (
+                    <div key={row.status}>
+                      <div className="flex justify-between text-sm mb-1">
+                        <span className="font-medium">{row.status.replace('_', ' ')}</span>
+                        <span className="text-muted-foreground">
+                          {row.count} ({pct}%)
+                        </span>
+                      </div>
+                      <Progress
+                        value={pct}
+                        className={`h-2 [&>div]:${STATUS_COLORS[row.status] ?? 'bg-gray-400'}`}
+                      />
+                    </div>
+                  );
+                })
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Milestone Status */}
+          {(report?.milestones?.length ?? 0) > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Target className="w-4 h-4" />
+                  Milestone Status
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {report?.milestones?.map((m: any) => (
+                  <div key={m.id} className="flex items-center justify-between">
+                    <span className="text-sm font-medium">{m.name}</span>
+                    <Badge
+                      variant={m.status === 'COMPLETED' ? 'default' : 'outline'}
+                      className="text-xs"
+                    >
+                      {m.status?.replace('_', ' ')}
+                    </Badge>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Member Contributions */}
+          {(report?.memberContributions?.length ?? 0) > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Users className="w-4 h-4" />
+                  Member Contributions
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Member</TableHead>
+                      <TableHead className="text-right">Assigned</TableHead>
+                      <TableHead className="text-right">Completed</TableHead>
+                      <TableHead className="text-right">Hours</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {report?.memberContributions?.map((mc: any) => (
+                      <TableRow key={mc.userId}>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Avatar className="w-7 h-7">
+                              <AvatarImage src={mc.user?.avatar} />
+                              <AvatarFallback className="text-xs">
+                                {mc.user?.name?.charAt(0) ?? 'U'}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="text-sm font-medium">{mc.user?.name}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right text-sm">{mc.tasksAssigned ?? 0}</TableCell>
+                        <TableCell className="text-right text-sm">{mc.tasksCompleted ?? 0}</TableCell>
+                        <TableCell className="text-right text-sm">{mc.hoursLogged ?? 0}h</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          )}
+        </>
+      )}
+    </motion.div>
+  );
+}

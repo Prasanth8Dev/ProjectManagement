@@ -1,0 +1,232 @@
+'use client';
+import { useParams } from 'next/navigation';
+import { motion } from 'framer-motion';
+import { format } from 'date-fns';
+import { AlertTriangle, Clock, CheckCircle2 } from 'lucide-react';
+import { useUpdate } from '@/hooks/use-updates';
+import { PageHeader } from '@/components/layout/page-header';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Skeleton } from '@/components/ui/skeleton';
+import { ErrorState } from '@/components/ui/error-state';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { cn } from '@/lib/utils/cn';
+
+const MOOD_EMOJIS: Record<string, string> = {
+  GREAT: '😄',
+  GOOD: '🙂',
+  NEUTRAL: '😐',
+  BAD: '😕',
+  TERRIBLE: '😞',
+};
+
+export default function UpdateDetailPage() {
+  const { id } = useParams<{ id: string }>();
+  const { data: updateResp, isLoading, isError } = useUpdate(id);
+  const update = updateResp?.data;
+
+  if (isError) {
+    return <ErrorState title="Failed to load update" description="Please try again." />;
+  }
+
+  const hasBlockers =
+    update?.blockers?.trim() ||
+    update?.tasks?.some((t: any) => t.isBlocked);
+
+  return (
+    <div className="space-y-6 max-w-4xl">
+      {/* Header */}
+      {isLoading ? (
+        <div className="space-y-3">
+          <Skeleton className="h-8 w-1/3" />
+          <Skeleton className="h-4 w-1/4" />
+        </div>
+      ) : (
+        <div className="flex items-start gap-4">
+          <Avatar className="w-12 h-12">
+            <AvatarImage src={update?.user?.avatar} />
+            <AvatarFallback>
+              {(update?.user?.name ?? 'U').charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1">
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-xl font-bold">{update?.user?.name}</h1>
+              <span className="text-2xl" title={String(update?.mood ?? '')}>
+                {MOOD_EMOJIS[update?.mood ?? ''] ?? ''}
+              </span>
+            </div>
+            <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
+              {update?.date && (
+                <span>{format(new Date(update.date), 'EEEE, MMMM d, yyyy')}</span>
+              )}
+              {update?.hoursWorked != null && (
+                <span className="flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5" />
+                  {update.hoursWorked}h worked
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Summary */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Summary</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-5/6" />
+              <Skeleton className="h-4 w-4/6" />
+            </div>
+          ) : (
+            <p className="text-sm leading-relaxed whitespace-pre-wrap">
+              {update?.summary || 'No summary provided.'}
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Tomorrow's plan */}
+      {(update?.tomorrowPlan || isLoading) && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Tomorrow's Plan</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <Skeleton className="h-16 w-full" />
+            ) : (
+              <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                {update?.tomorrowPlan}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Blockers */}
+      {hasBlockers && (
+        <Card className="border-orange-300 bg-orange-50 dark:bg-orange-950/20 dark:border-orange-800">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2 text-orange-700 dark:text-orange-400">
+              <AlertTriangle className="w-4 h-4" />
+              Blockers
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {update?.blockers && (
+              <p className="text-sm leading-relaxed whitespace-pre-wrap text-orange-800 dark:text-orange-300">
+                {update.blockers}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Task Updates Table */}
+      {(isLoading || (update?.tasks?.length ?? 0) > 0) && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Task Updates</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            {isLoading ? (
+              <div className="p-6 space-y-3">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <Skeleton key={i} className="h-10 w-full" />
+                ))}
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Task</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Completed</TableHead>
+                      <TableHead>Blocked</TableHead>
+                      <TableHead>Hours</TableHead>
+                      <TableHead>Notes</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {update?.tasks?.map((tu: any) => (
+                      <TableRow
+                        key={tu.id}
+                        className={cn(tu.isBlocked && 'bg-orange-50/50 dark:bg-orange-950/10')}
+                      >
+                        <TableCell className="font-medium text-sm max-w-[200px] truncate">
+                          {tu.task?.title ?? '—'}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="text-xs">
+                            {tu.status?.replace('_', ' ')}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {tu.isCompleted ? (
+                            <CheckCircle2 className="w-4 h-4 text-green-600" />
+                          ) : (
+                            <span className="text-muted-foreground text-xs">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {tu.isBlocked ? (
+                            <AlertTriangle className="w-4 h-4 text-orange-500" />
+                          ) : (
+                            <span className="text-muted-foreground text-xs">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          {tu.hoursSpent != null ? `${tu.hoursSpent}h` : '—'}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
+                          {tu.notes ?? '—'}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Projects mentioned */}
+      {(update?.projects?.length ?? 0) > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Projects</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {update?.projects?.map((p: any) => (
+                <Badge key={p.id} variant="secondary">
+                  <div
+                    className="w-2 h-2 rounded-full mr-1.5"
+                    style={{ backgroundColor: p.color || '#6366f1' }}
+                  />
+                  {p.name}
+                </Badge>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}

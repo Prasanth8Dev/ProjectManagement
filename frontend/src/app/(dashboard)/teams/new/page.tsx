@@ -1,0 +1,161 @@
+'use client';
+import { useRouter } from 'next/navigation';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { motion } from 'framer-motion';
+import { ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
+import { PageHeader } from '@/components/layout/page-header';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { useCreateTeam } from '@/hooks/use-teams';
+import { useToast } from '@/hooks/use-toast';
+import { extractApiError } from '@/lib/utils/error';
+import { ROUTES } from '@/constants/routes';
+
+const createTeamSchema = z.object({
+  name: z.string().min(1, 'Team name is required').max(80),
+  description: z.string().optional(),
+  color: z.string().default('#6366f1'),
+});
+
+type CreateTeamValues = z.infer<typeof createTeamSchema>;
+
+const COLOR_OPTIONS = [
+  '#6366f1', '#8b5cf6', '#ec4899', '#f43f5e',
+  '#ef4444', '#f97316', '#eab308', '#22c55e',
+  '#10b981', '#06b6d4', '#3b82f6', '#64748b',
+];
+
+export default function NewTeamPage() {
+  const router = useRouter();
+  const { toast } = useToast();
+  const createTeam = useCreateTeam();
+
+  const form = useForm<CreateTeamValues>({
+    resolver: zodResolver(createTeamSchema),
+    defaultValues: {
+      name: '',
+      description: '',
+      color: '#6366f1',
+    },
+  });
+
+  const onSubmit = async (values: CreateTeamValues) => {
+    try {
+      const result = await createTeam.mutateAsync(values);
+      toast({ title: 'Team created', description: `"${values.name}" is ready.` });
+      router.push(ROUTES.TEAM(result.data.id));
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Error', description: extractApiError(err) });
+    }
+  };
+
+  return (
+    <div className="space-y-6 max-w-lg">
+      <PageHeader
+        title="Create Team"
+        description="Set up a new team for your organisation."
+        actions={
+          <Button variant="outline" asChild>
+            <Link href={ROUTES.TEAMS}>
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back
+            </Link>
+          </Button>
+        }
+      />
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Team Details</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Team Name *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g. Engineering, Design" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="What does this team work on?"
+                        rows={3}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="color"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Team Color</FormLabel>
+                    <FormControl>
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        {COLOR_OPTIONS.map((color) => (
+                          <button
+                            key={color}
+                            type="button"
+                            onClick={() => field.onChange(color)}
+                            className="w-8 h-8 rounded-full border-2 transition-all"
+                            style={{
+                              backgroundColor: color,
+                              borderColor: field.value === color ? '#000' : 'transparent',
+                              transform: field.value === color ? 'scale(1.2)' : 'scale(1)',
+                            }}
+                          />
+                        ))}
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="flex gap-3">
+                <Button type="submit" disabled={createTeam.isPending}>
+                  {createTeam.isPending ? 'Creating...' : 'Create Team'}
+                </Button>
+                <Button type="button" variant="outline" asChild>
+                  <Link href={ROUTES.TEAMS}>Cancel</Link>
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

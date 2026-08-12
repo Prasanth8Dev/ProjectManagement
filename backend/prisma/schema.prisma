@@ -1,0 +1,635 @@
+// =============================================================================
+// Team & Project Management — Complete Prisma Schema
+// Phase 1 · PostgreSQL · Prisma ORM
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================================================
+// ENUMS
+// =============================================================================
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  PROJECT_MANAGER
+  DEVELOPER
+  VIEWER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  INVITED
+}
+
+enum ProjectStatus {
+  PLANNING
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  ARCHIVED
+  CANCELLED
+}
+
+enum ProjectPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum TaskStatus {
+  BACKLOG
+  TODO
+  IN_PROGRESS
+  IN_REVIEW
+  TESTING
+  DONE
+  CANCELLED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum MilestoneStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  MISSED
+}
+
+enum TeamMemberRole {
+  LEAD
+  MEMBER
+}
+
+enum ProjectMemberRole {
+  OWNER
+  MANAGER
+  DEVELOPER
+  VIEWER
+}
+
+enum ActivityAction {
+  CREATED
+  UPDATED
+  DELETED
+  ASSIGNED
+  REASSIGNED
+  COMMENTED
+  STATUS_CHANGED
+  PRIORITY_CHANGED
+  DUE_DATE_CHANGED
+  MEMBER_ADDED
+  MEMBER_REMOVED
+  ATTACHMENT_ADDED
+  ATTACHMENT_REMOVED
+  CHECKLIST_CHECKED
+  CHECKLIST_UNCHECKED
+  SUBTASK_COMPLETED
+  MILESTONE_REACHED
+  ARCHIVED
+  UNARCHIVED
+}
+
+enum AttachmentEntityType {
+  TASK
+  PROJECT
+  COMMENT
+  DAILY_UPDATE
+}
+
+enum BugStatus {
+  OPEN
+  IN_PROGRESS
+  IN_REVIEW
+  RESOLVED
+  CLOSED
+  WONT_FIX
+}
+
+enum BugSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+// =============================================================================
+// USER
+// =============================================================================
+
+model User {
+  id           String     @id @default(uuid())
+  email        String     @unique
+  name         String
+  avatar       String?
+  role         UserRole   @default(DEVELOPER)
+  status       UserStatus @default(ACTIVE)
+  jobTitle     String?
+  department   String?
+  phone        String?
+  timezone     String?    @default("UTC")
+  bio          String?
+  password     String?    // plain-text password (dev mode)
+
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  // Relations
+  teamMemberships   TeamMember[]
+  projectMemberships ProjectMember[]
+  assignedTasks     Task[]            @relation("TaskAssignee")
+  reportedTasks     Task[]            @relation("TaskReporter")
+  comments          Comment[]
+  attachments       Attachment[]
+  dailyUpdates      DailyWorkUpdate[]
+  activityLogs      ActivityLog[]
+  taskHistories     TaskHistory[]
+  assignedBugs      Bug[]             @relation("BugAssignee")
+  reportedBugs      Bug[]             @relation("BugReporter")
+
+  @@index([email])
+  @@index([role])
+  @@index([status])
+  @@map("users")
+}
+
+// =============================================================================
+// TEAM
+// =============================================================================
+
+model Team {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  description String?
+  avatar      String?
+  color       String?  @default("#6366f1")
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  members     TeamMember[]
+  projects    ProjectTeam[]
+
+  @@index([slug])
+  @@map("teams")
+}
+
+model TeamMember {
+  id        String         @id @default(uuid())
+  teamId    String
+  userId    String
+  role      TeamMemberRole @default(MEMBER)
+  joinedAt  DateTime       @default(now())
+
+  team      Team           @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+  @@index([teamId])
+  @@index([userId])
+  @@map("team_members")
+}
+
+// =============================================================================
+// PROJECT
+// =============================================================================
+
+model Project {
+  id          String          @id @default(uuid())
+  name        String
+  slug        String          @unique
+  description String?
+  status      ProjectStatus   @default(PLANNING)
+  priority    ProjectPriority @default(MEDIUM)
+  color       String?         @default("#6366f1")
+  icon        String?
+  startDate   DateTime?
+  endDate     DateTime?
+  isArchived  Boolean         @default(false)
+  archivedAt  DateTime?
+
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  // Relations
+  members     ProjectMember[]
+  teams       ProjectTeam[]
+  tasks       Task[]
+  milestones  Milestone[]
+  labels      Label[]
+  attachments Attachment[]
+  activityLogs ActivityLog[]
+  dailyUpdates DailyWorkUpdateProject[]
+  bugs        Bug[]
+
+  @@index([slug])
+  @@index([status])
+  @@index([isArchived])
+  @@index([startDate, endDate])
+  @@map("projects")
+}
+
+model ProjectMember {
+  id        String            @id @default(uuid())
+  projectId String
+  userId    String
+  role      ProjectMemberRole @default(DEVELOPER)
+  joinedAt  DateTime          @default(now())
+
+  project   Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@index([projectId])
+  @@index([userId])
+  @@map("project_members")
+}
+
+model ProjectTeam {
+  id        String   @id @default(uuid())
+  projectId String
+  teamId    String
+  addedAt   DateTime @default(now())
+
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, teamId])
+  @@index([projectId])
+  @@index([teamId])
+  @@map("project_teams")
+}
+
+// =============================================================================
+// MILESTONE
+// =============================================================================
+
+model Milestone {
+  id          String          @id @default(uuid())
+  projectId   String
+  name        String
+  description String?
+  status      MilestoneStatus @default(PENDING)
+  dueDate     DateTime
+  completedAt DateTime?
+
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  project     Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks       Task[]
+
+  @@index([projectId])
+  @@index([status])
+  @@index([dueDate])
+  @@map("milestones")
+}
+
+// =============================================================================
+// LABEL
+// =============================================================================
+
+model Label {
+  id        String   @id @default(uuid())
+  projectId String
+  name      String
+  color     String   @default("#6366f1")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks     TaskLabel[]
+
+  @@unique([projectId, name])
+  @@index([projectId])
+  @@map("labels")
+}
+
+model TaskLabel {
+  taskId  String
+  labelId String
+
+  task    Task  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  label   Label @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, labelId])
+  @@map("task_labels")
+}
+
+// =============================================================================
+// TASK
+// =============================================================================
+
+model Task {
+  id             String       @id @default(uuid())
+  projectId      String
+  milestoneId    String?
+  assigneeId     String?
+  reporterId     String?
+  parentTaskId   String?      // null = top-level task
+
+  title          String
+  description    String?
+  status         TaskStatus   @default(BACKLOG)
+  priority       TaskPriority @default(MEDIUM)
+
+  startDate      DateTime?
+  dueDate        DateTime?
+  completedAt    DateTime?
+  estimatedHours Float?
+  actualHours    Float?
+
+  position       Int          @default(0) // Kanban ordering within column
+  isArchived     Boolean      @default(false)
+
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  // Relations
+  project        Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  milestone      Milestone?   @relation(fields: [milestoneId], references: [id], onDelete: SetNull)
+  assignee       User?        @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  reporter       User?        @relation("TaskReporter", fields: [reporterId], references: [id], onDelete: SetNull)
+
+  // Self-referential: subtasks
+  parentTask     Task?        @relation("TaskSubtasks", fields: [parentTaskId], references: [id], onDelete: Cascade)
+  subtasks       Task[]       @relation("TaskSubtasks")
+
+  labels         TaskLabel[]
+  comments       Comment[]
+  attachments    Attachment[]
+  checklistItems ChecklistItem[]
+  history        TaskHistory[]
+  activityLogs   ActivityLog[]
+  dailyUpdateTasks DailyWorkUpdateTask[]
+
+  @@index([projectId])
+  @@index([assigneeId])
+  @@index([reporterId])
+  @@index([milestoneId])
+  @@index([status])
+  @@index([priority])
+  @@index([dueDate])
+  @@index([parentTaskId])
+  @@index([projectId, status, position]) // Kanban board fetch
+  @@map("tasks")
+}
+
+// =============================================================================
+// CHECKLIST ITEM
+// =============================================================================
+
+model ChecklistItem {
+  id          String   @id @default(uuid())
+  taskId      String
+  title       String
+  isCompleted Boolean  @default(false)
+  position    Int      @default(0)
+  completedAt DateTime?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@map("checklist_items")
+}
+
+// =============================================================================
+// COMMENT
+// =============================================================================
+
+model Comment {
+  id        String    @id @default(uuid())
+  taskId    String
+  authorId  String
+  parentId  String?   // null = top-level comment; set = reply
+
+  content   String
+  mentions  String[]  // Array of user IDs mentioned (@username)
+  isEdited  Boolean   @default(false)
+  editedAt  DateTime?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  task      Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[] @relation("CommentReplies")
+
+  @@index([taskId])
+  @@index([authorId])
+  @@index([parentId])
+  @@map("comments")
+}
+
+// =============================================================================
+// ATTACHMENT
+// =============================================================================
+
+model Attachment {
+  id         String               @id @default(uuid())
+  uploadedBy String
+  projectId  String?
+  taskId     String?
+
+  fileName   String               // Original file name
+  fileKey    String               @unique // Storage key (local path or S3 key)
+  fileUrl    String               // Access URL
+  mimeType   String
+  fileSize   Int                  // Bytes
+  entityType AttachmentEntityType
+
+  createdAt  DateTime             @default(now())
+
+  uploader   User                 @relation(fields: [uploadedBy], references: [id], onDelete: Cascade)
+  project    Project?             @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  task       Task?                @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
+  @@index([taskId])
+  @@index([projectId])
+  @@index([uploadedBy])
+  @@map("attachments")
+}
+
+// =============================================================================
+// TASK HISTORY
+// =============================================================================
+
+model TaskHistory {
+  id        String   @id @default(uuid())
+  taskId    String
+  userId    String
+
+  field     String   // "status", "assignee", "priority", "dueDate", etc.
+  oldValue  String?
+  newValue  String?
+
+  createdAt DateTime @default(now())
+
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("task_history")
+}
+
+// =============================================================================
+// ACTIVITY LOG
+// =============================================================================
+
+model ActivityLog {
+  id          String         @id @default(uuid())
+  userId      String
+  projectId   String?
+  taskId      String?
+
+  action      ActivityAction
+  entityType  String         // "Task", "Project", "Comment", etc.
+  entityId    String
+  entityTitle String?        // Snapshot of title at time of action
+  metadata    Json?          // Extra context (old→new values, etc.)
+
+  createdAt   DateTime       @default(now())
+
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project     Project?       @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  task        Task?          @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([projectId])
+  @@index([taskId])
+  @@index([action])
+  @@index([createdAt])
+  @@index([entityType, entityId])
+  @@map("activity_logs")
+}
+
+// =============================================================================
+// DAILY WORK UPDATE
+// =============================================================================
+
+model DailyWorkUpdate {
+  id             String   @id @default(uuid())
+  userId         String
+  date           DateTime @db.Date  // The work date (no time)
+
+  summary        String             // Narrative of what was worked on
+  hoursWorked    Float
+  tomorrowPlan   String?
+  blockers       String?
+  mood           Int?               // Optional 1-5 morale indicator
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Many-to-many with tasks
+  tasks          DailyWorkUpdateTask[]
+  // Many-to-many with projects
+  projects       DailyWorkUpdateProject[]
+
+  @@unique([userId, date])            // One update per user per day
+  @@index([userId])
+  @@index([date])
+  @@map("daily_work_updates")
+}
+
+// Join table: DailyWorkUpdate ↔ Task (with context)
+model DailyWorkUpdateTask {
+  id            String          @id @default(uuid())
+  updateId      String
+  taskId        String
+  isCompleted   Boolean         @default(false) // Did they finish it today?
+  isBlocked     Boolean         @default(false) // Is it blocked?
+  hoursSpent    Float?
+  notes         String?
+
+  update        DailyWorkUpdate @relation(fields: [updateId], references: [id], onDelete: Cascade)
+  task          Task            @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@unique([updateId, taskId])
+  @@index([updateId])
+  @@index([taskId])
+  @@map("daily_work_update_tasks")
+}
+
+// =============================================================================
+// BUG TRACKER
+// =============================================================================
+
+model Bug {
+  id                String       @id @default(uuid())
+  title             String
+  description       String?
+  stepsToReproduce  String?
+  expectedBehavior  String?
+  actualBehavior    String?
+  environment       String?      // e.g. "Chrome 120, macOS 14"
+
+  status            BugStatus    @default(OPEN)
+  severity          BugSeverity  @default(MEDIUM)
+  priority          TaskPriority @default(MEDIUM)
+
+  projectId         String?
+  assigneeId        String?
+  reporterId        String
+
+  resolvedAt        DateTime?
+  closedAt          DateTime?
+  isArchived        Boolean      @default(false)
+
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  project           Project?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  assignee          User?        @relation("BugAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  reporter          User         @relation("BugReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([assigneeId])
+  @@index([reporterId])
+  @@index([status])
+  @@index([severity])
+  @@index([priority])
+  @@index([isArchived])
+  @@index([createdAt])
+  @@map("bugs")
+}
+
+// Join table: DailyWorkUpdate ↔ Project
+model DailyWorkUpdateProject {
+  id        String          @id @default(uuid())
+  updateId  String
+  projectId String
+
+  update    DailyWorkUpdate @relation(fields: [updateId], references: [id], onDelete: Cascade)
+  project   Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([updateId, projectId])
+  @@index([updateId])
+  @@index([projectId])
+  @@map("daily_work_update_projects")
+}
