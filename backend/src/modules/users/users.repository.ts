@@ -103,7 +103,10 @@ export class UsersRepository {
   }
 
   async findByEmail(email: string) {
-    return this.prisma.user.findUnique({ where: { email } });
+    // Case-insensitive match so "Alice@x.com" and "alice@x.com" resolve to the same user.
+    return this.prisma.user.findFirst({
+      where: { email: { equals: email.trim(), mode: 'insensitive' } },
+    });
   }
 
   async create(data: Prisma.UserCreateInput) {

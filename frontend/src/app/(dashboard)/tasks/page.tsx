@@ -14,6 +14,7 @@ import { ErrorState } from '@/components/ui/error-state';
 import { useTasks } from '@/hooks/use-tasks';
 import { useMembers } from '@/hooks/use-members';
 import { useProjects } from '@/hooks/use-projects';
+import { useAuthStore } from '@/stores/auth.store';
 import {
   Pagination,
   PaginationContent,
@@ -28,19 +29,42 @@ function AllTasksPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const { currentUser } = useAuthStore();
 
   // URL-synced filters
   const status = searchParams.get('status') ?? undefined;
   const priority = searchParams.get('priority') ?? undefined;
   const projectId = searchParams.get('projectId') ?? undefined;
-  const assigneeId = searchParams.get('assigneeId') ?? undefined;
+
+  // assigneeId has three possible URL states:
+  //  - absent entirely  -> nothing chosen yet, default to "my tasks"
+  //  - explicit "all"   -> user picked "All assignees", show everything
+  //  - a uuid           -> filter to that specific assignee
+  const assigneeIdParam = searchParams.get('assigneeId');
+  const assigneeId =
+    assigneeIdParam === null
+      ? currentUser?.id
+      : assigneeIdParam === 'all'
+        ? undefined
+        : assigneeIdParam;
+
   const page = parseInt(searchParams.get('page') ?? '1', 10);
 
   const setParam = useCallback(
     (key: string, value: string | undefined) => {
       const params = new URLSearchParams(searchParams.toString());
-      if (value && value !== 'all') {
+      // The filter dropdowns use Radix "__all_x__" sentinel values because
+      // Select items can't have an empty value — treat any of those, plus
+      // the plain "all", as "clear this filter".
+      const isCleared = !value || value === 'all' || /^__all_.+__$/.test(value);
+
+      if (!isCleared) {
         params.set(key, value);
+      } else if (key === 'assigneeId') {
+        // Write an explicit "all" marker instead of deleting the param so
+        // we can tell "user picked All assignees" apart from "no choice
+        // made yet" (which defaults to the current user) on next render.
+        params.set(key, 'all');
       } else {
         params.delete(key);
       }

@@ -27,7 +27,7 @@ export default function LoginPage() {
     setError('');
     setIsPending(true);
     try {
-      const user = await loginUser({ email, password });
+      const user = await loginUser({ email: email.trim(), password });
       setCurrentUser(user);
       router.push(ROUTES.DASHBOARD);
     } catch (err: any) {
