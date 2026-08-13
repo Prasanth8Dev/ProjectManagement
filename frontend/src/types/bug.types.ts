@@ -1,6 +1,15 @@
-export type BugStatus = 'OPEN' | 'IN_PROGRESS' | 'IN_REVIEW' | 'RESOLVED' | 'CLOSED' | 'WONT_FIX';
+export type BugStatus =
+  | 'OPEN'
+  | 'IN_PROGRESS'
+  | 'PENDING'
+  | 'IN_REVIEW'
+  | 'RESOLVED'
+  | 'REOPENED'
+  | 'CLOSED'
+  | 'WONT_FIX';
 export type BugSeverity = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 export type BugPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+export type BugPlatform = 'IOS' | 'ANDROID' | 'BACKEND' | 'FRONTEND';
 
 export interface BugUser {
   id: string;
@@ -28,6 +37,7 @@ export interface Bug {
   status: BugStatus;
   severity: BugSeverity;
   priority: BugPriority;
+  platform?: BugPlatform | null;
 
   projectId?: string | null;
   assigneeId?: string | null;

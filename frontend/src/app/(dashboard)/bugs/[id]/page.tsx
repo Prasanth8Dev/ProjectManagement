@@ -26,6 +26,7 @@ import { Separator } from '@/components/ui/separator';
 import { UserAvatar } from '@/components/shared/user-avatar';
 import { BugStatusBadge } from '@/components/features/bugs/bug-status-badge';
 import { BugSeverityBadge } from '@/components/features/bugs/bug-severity-badge';
+import { BugPlatformBadge } from '@/components/features/bugs/bug-platform-badge';
 import { BugFormSheet } from '@/components/features/bugs/bug-form-sheet';
 import { useBug, useDeleteBug, useChangeBugStatus, useAssignBug } from '@/hooks/use-bugs';
 import { UserSelect } from '@/components/shared/user-select';
@@ -37,8 +38,10 @@ import type { BugStatus } from '@/types/bug.types';
 const STATUS_OPTIONS: { value: BugStatus; label: string }[] = [
   { value: 'OPEN', label: 'Open' },
   { value: 'IN_PROGRESS', label: 'In Progress' },
+  { value: 'PENDING', label: 'Pending' },
   { value: 'IN_REVIEW', label: 'In Review' },
   { value: 'RESOLVED', label: 'Resolved' },
+  { value: 'REOPENED', label: 'Re-opened' },
   { value: 'CLOSED', label: 'Closed' },
   { value: 'WONT_FIX', label: "Won't Fix" },
 ];
@@ -141,6 +144,7 @@ export default function BugDetailPage() {
           <div className="flex flex-wrap items-center gap-2">
             <BugStatusBadge status={bug.status} />
             <BugSeverityBadge severity={bug.severity} />
+            {bug.platform && <BugPlatformBadge platform={bug.platform} />}
             <span className={`text-xs font-semibold uppercase tracking-wide ${PRIORITY_COLORS[bug.priority]}`}>
               {bug.priority} Priority
             </span>

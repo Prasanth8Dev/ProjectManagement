@@ -114,8 +114,10 @@ enum AttachmentEntityType {
 enum BugStatus {
   OPEN
   IN_PROGRESS
+  PENDING
   IN_REVIEW
   RESOLVED
+  REOPENED
   CLOSED
   WONT_FIX
 }
@@ -125,6 +127,13 @@ enum BugSeverity {
   MEDIUM
   HIGH
   CRITICAL
+}
+
+enum BugPlatform {
+  IOS
+  ANDROID
+  BACKEND
+  FRONTEND
 }
 
 // =============================================================================
@@ -592,6 +601,7 @@ model Bug {
   status            BugStatus    @default(OPEN)
   severity          BugSeverity  @default(MEDIUM)
   priority          TaskPriority @default(MEDIUM)
+  platform          BugPlatform?
 
   projectId         String?
   assigneeId        String?
@@ -614,6 +624,7 @@ model Bug {
   @@index([status])
   @@index([severity])
   @@index([priority])
+  @@index([platform])
   @@index([isArchived])
   @@index([createdAt])
   @@map("bugs")

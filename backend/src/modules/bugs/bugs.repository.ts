@@ -22,6 +22,7 @@ export class BugsRepository {
     status?: string;
     severity?: string;
     priority?: string;
+    platform?: string;
     projectId?: string;
     assigneeId?: string;
     reporterId?: string;
@@ -36,6 +37,7 @@ export class BugsRepository {
       status,
       severity,
       priority,
+      platform,
       projectId,
       assigneeId,
       reporterId,
@@ -56,6 +58,7 @@ export class BugsRepository {
       ...(status && { status: status as any }),
       ...(severity && { severity: severity as any }),
       ...(priority && { priority: priority as any }),
+      ...(platform && { platform: platform as any }),
       ...(projectId && { projectId }),
       ...(assigneeId && { assigneeId }),
       ...(reporterId && { reporterId }),

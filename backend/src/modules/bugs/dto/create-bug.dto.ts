@@ -4,8 +4,10 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 export enum BugStatus {
   OPEN = 'OPEN',
   IN_PROGRESS = 'IN_PROGRESS',
+  PENDING = 'PENDING',
   IN_REVIEW = 'IN_REVIEW',
   RESOLVED = 'RESOLVED',
+  REOPENED = 'REOPENED',
   CLOSED = 'CLOSED',
   WONT_FIX = 'WONT_FIX',
 }
@@ -15,6 +17,13 @@ export enum BugSeverity {
   MEDIUM = 'MEDIUM',
   HIGH = 'HIGH',
   CRITICAL = 'CRITICAL',
+}
+
+export enum BugPlatform {
+  IOS = 'IOS',
+  ANDROID = 'ANDROID',
+  BACKEND = 'BACKEND',
+  FRONTEND = 'FRONTEND',
 }
 
 export enum BugPriority {
@@ -70,6 +79,11 @@ export class CreateBugDto {
   @IsOptional()
   @IsEnum(BugPriority)
   priority?: BugPriority;
+
+  @ApiPropertyOptional({ enum: BugPlatform })
+  @IsOptional()
+  @IsEnum(BugPlatform)
+  platform?: BugPlatform;
 
   @ApiPropertyOptional()
   @IsOptional()

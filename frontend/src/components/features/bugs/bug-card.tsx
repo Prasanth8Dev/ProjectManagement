@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { UserAvatar } from '@/components/shared/user-avatar';
 import { BugSeverityBadge } from './bug-severity-badge';
 import { BugStatusBadge } from './bug-status-badge';
+import { BugPlatformBadge } from './bug-platform-badge';
 import type { Bug } from '@/types/bug.types';
 import { ROUTES } from '@/constants/routes';
 import { formatDate } from '@/lib/utils/date';
@@ -61,6 +62,7 @@ export function BugCard({ bug, onClick, className }: BugCardProps) {
           <div className="flex items-center gap-2 flex-wrap">
             <BugStatusBadge status={bug.status} />
             <BugSeverityBadge severity={bug.severity} />
+            {bug.platform && <BugPlatformBadge platform={bug.platform} />}
           </div>
 
           {/* Footer row */}

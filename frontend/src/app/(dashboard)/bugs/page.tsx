@@ -35,10 +35,20 @@ const STATUS_OPTIONS = [
   { value: 'all', label: 'All Statuses' },
   { value: 'OPEN', label: 'Open' },
   { value: 'IN_PROGRESS', label: 'In Progress' },
+  { value: 'PENDING', label: 'Pending' },
   { value: 'IN_REVIEW', label: 'In Review' },
   { value: 'RESOLVED', label: 'Resolved' },
+  { value: 'REOPENED', label: 'Re-opened' },
   { value: 'CLOSED', label: 'Closed' },
   { value: 'WONT_FIX', label: "Won't Fix" },
+];
+
+const PLATFORM_OPTIONS = [
+  { value: 'all', label: 'All Platforms' },
+  { value: 'IOS', label: 'iOS' },
+  { value: 'ANDROID', label: 'Android' },
+  { value: 'BACKEND', label: 'Backend' },
+  { value: 'FRONTEND', label: 'Frontend' },
 ];
 
 const SEVERITY_OPTIONS = [
@@ -67,6 +77,7 @@ function BugsPageInner() {
   const status = searchParams.get('status') ?? undefined;
   const severity = searchParams.get('severity') ?? undefined;
   const priority = searchParams.get('priority') ?? undefined;
+  const platform = searchParams.get('platform') ?? undefined;
   const assigneeId = searchParams.get('assigneeId') ?? undefined;
   const page = parseInt(searchParams.get('page') ?? '1', 10);
 
@@ -98,6 +109,7 @@ function BugsPageInner() {
     status,
     severity,
     priority,
+    platform,
     assigneeId,
     page,
     limit: PAGE_SIZE,
@@ -188,6 +200,21 @@ function BugsPageInner() {
           </SelectTrigger>
           <SelectContent>
             {PRIORITY_OPTIONS.map((o) => (
+              <SelectItem key={o.value} value={o.value}>
+                {o.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select
+          value={platform ?? 'all'}
+          onValueChange={(v) => setParam('platform', v)}
+        >
+          <SelectTrigger className="w-full sm:w-40">
+            <SelectValue placeholder="Platform" />
+          </SelectTrigger>
+          <SelectContent>
+            {PLATFORM_OPTIONS.map((o) => (
               <SelectItem key={o.value} value={o.value}>
                 {o.label}
               </SelectItem>

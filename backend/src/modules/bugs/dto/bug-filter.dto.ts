@@ -2,7 +2,7 @@ import { IsOptional, IsString, IsEnum, IsBoolean } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
-import { BugStatus, BugSeverity, BugPriority } from './create-bug.dto';
+import { BugStatus, BugSeverity, BugPriority, BugPlatform } from './create-bug.dto';
 
 export class BugFilterDto extends PaginationDto {
   @ApiPropertyOptional()
@@ -24,6 +24,11 @@ export class BugFilterDto extends PaginationDto {
   @IsOptional()
   @IsEnum(BugPriority)
   priority?: BugPriority;
+
+  @ApiPropertyOptional({ enum: BugPlatform })
+  @IsOptional()
+  @IsEnum(BugPlatform)
+  platform?: BugPlatform;
 
   @ApiPropertyOptional()
   @IsOptional()

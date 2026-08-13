@@ -17,6 +17,7 @@ export class BugsService {
       status,
       severity,
       priority,
+      platform,
       projectId,
       assigneeId,
       reporterId,
@@ -32,6 +33,7 @@ export class BugsService {
       status,
       severity,
       priority,
+      platform,
       projectId,
       assigneeId,
       reporterId,
@@ -60,6 +62,7 @@ export class BugsService {
       status: dto.status ?? 'OPEN',
       severity: dto.severity ?? 'MEDIUM',
       priority: dto.priority ?? 'MEDIUM',
+      platform: dto.platform,
       reporter: { connect: { id: dto.reporterId } },
       ...(dto.projectId && { project: { connect: { id: dto.projectId } } }),
       ...(dto.assigneeId && { assignee: { connect: { id: dto.assigneeId } } }),
@@ -78,6 +81,7 @@ export class BugsService {
     if (dto.environment !== undefined) data.environment = dto.environment;
     if (dto.severity !== undefined) data.severity = dto.severity;
     if (dto.priority !== undefined) data.priority = dto.priority;
+    if (dto.platform !== undefined) data.platform = dto.platform;
     if (dto.isArchived !== undefined) data.isArchived = dto.isArchived;
     if (dto.projectId !== undefined) data.projectId = dto.projectId ?? null;
     if (dto.assigneeId !== undefined) data.assigneeId = dto.assigneeId ?? null;
@@ -88,6 +92,10 @@ export class BugsService {
         data.resolvedAt = new Date();
       } else if (dto.status === 'CLOSED' || dto.status === 'WONT_FIX') {
         data.closedAt = new Date();
+      } else if (dto.status === 'REOPENED' || dto.status === 'OPEN') {
+        // Going back to an open state clears any prior resolution/closure timestamps.
+        data.resolvedAt = null;
+        data.closedAt = null;
       }
     }
 
@@ -109,6 +117,10 @@ export class BugsService {
     const data: Record<string, unknown> = { status: dto.status };
     if (dto.status === 'RESOLVED') data.resolvedAt = new Date();
     if (dto.status === 'CLOSED' || dto.status === 'WONT_FIX') data.closedAt = new Date();
+    if (dto.status === 'REOPENED' || dto.status === 'OPEN') {
+      data.resolvedAt = null;
+      data.closedAt = null;
+    }
     return this.bugsRepository.update(id, data as any);
   }
 }

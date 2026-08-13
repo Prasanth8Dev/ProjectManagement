@@ -42,9 +42,12 @@ const bugSchema = z.object({
   expectedBehavior: z.string().optional(),
   actualBehavior: z.string().optional(),
   environment: z.string().optional(),
-  status: z.enum(['OPEN', 'IN_PROGRESS', 'IN_REVIEW', 'RESOLVED', 'CLOSED', 'WONT_FIX']).default('OPEN'),
+  status: z
+    .enum(['OPEN', 'IN_PROGRESS', 'PENDING', 'IN_REVIEW', 'RESOLVED', 'REOPENED', 'CLOSED', 'WONT_FIX'])
+    .default('OPEN'),
   severity: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']).default('MEDIUM'),
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).default('MEDIUM'),
+  platform: z.enum(['IOS', 'ANDROID', 'BACKEND', 'FRONTEND']).optional(),
   projectId: z.string().optional(),
   assigneeId: z.string().optional(),
 });
@@ -54,10 +57,19 @@ type BugFormValues = z.infer<typeof bugSchema>;
 const STATUS_OPTIONS = [
   { value: 'OPEN', label: 'Open' },
   { value: 'IN_PROGRESS', label: 'In Progress' },
+  { value: 'PENDING', label: 'Pending' },
   { value: 'IN_REVIEW', label: 'In Review' },
   { value: 'RESOLVED', label: 'Resolved' },
+  { value: 'REOPENED', label: 'Re-opened' },
   { value: 'CLOSED', label: 'Closed' },
   { value: 'WONT_FIX', label: "Won't Fix" },
+];
+
+const PLATFORM_OPTIONS = [
+  { value: 'IOS', label: 'iOS' },
+  { value: 'ANDROID', label: 'Android' },
+  { value: 'BACKEND', label: 'Backend' },
+  { value: 'FRONTEND', label: 'Frontend' },
 ];
 
 const SEVERITY_OPTIONS = [
@@ -101,6 +113,7 @@ export function BugFormSheet({ open, onOpenChange, bug, defaultProjectId }: BugF
       status: bug?.status ?? 'OPEN',
       severity: bug?.severity ?? 'MEDIUM',
       priority: bug?.priority ?? 'MEDIUM',
+      platform: bug?.platform ?? undefined,
       projectId: bug?.projectId ?? defaultProjectId ?? '',
       assigneeId: bug?.assigneeId ?? '',
     },
@@ -118,6 +131,7 @@ export function BugFormSheet({ open, onOpenChange, bug, defaultProjectId }: BugF
         status: bug?.status ?? 'OPEN',
         severity: bug?.severity ?? 'MEDIUM',
         priority: bug?.priority ?? 'MEDIUM',
+        platform: bug?.platform ?? undefined,
         projectId: bug?.projectId ?? defaultProjectId ?? '',
         assigneeId: bug?.assigneeId ?? '',
       });
@@ -275,6 +289,36 @@ export function BugFormSheet({ open, onOpenChange, bug, defaultProjectId }: BugF
                         {...field}
                       />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Platform */}
+              <FormField
+                control={form.control}
+                name="platform"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Platform</FormLabel>
+                    <Select
+                      onValueChange={(v) => field.onChange(v === 'UNSPECIFIED' ? undefined : v)}
+                      value={field.value ?? 'UNSPECIFIED'}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select platform" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="UNSPECIFIED">Not specified</SelectItem>
+                        {PLATFORM_OPTIONS.map((o) => (
+                          <SelectItem key={o.value} value={o.value}>
+                            {o.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}

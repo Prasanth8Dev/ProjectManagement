@@ -7,6 +7,7 @@ export interface BugFilterParams extends PaginationParams {
   status?: string;
   severity?: string;
   priority?: string;
+  platform?: string;
   projectId?: string;
   assigneeId?: string;
   reporterId?: string;
@@ -22,6 +23,7 @@ export interface CreateBugInput {
   status?: BugStatus;
   severity?: string;
   priority?: string;
+  platform?: string;
   projectId?: string;
   assigneeId?: string;
   reporterId: string;
