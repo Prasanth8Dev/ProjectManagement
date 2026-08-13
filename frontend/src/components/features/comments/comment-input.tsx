@@ -5,6 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useCreateComment } from '@/hooks/use-comments';
 import { toast } from '@/components/ui/use-toast';
+import { useAuthStore } from '@/stores/auth.store';
 
 interface CommentInputProps {
   taskId: string;
@@ -25,21 +26,32 @@ export function CommentInput({
   const [content, setContent] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { mutate: createComment, isPending } = useCreateComment(taskId);
+  const { currentUser } = useAuthStore();
 
   const handleSubmit = () => {
     const trimmed = content.trim();
     if (!trimmed) return;
+    if (!currentUser?.id) {
+      toast({
+        title: 'Failed to add comment',
+        description: 'You must be logged in to comment.',
+        variant: 'destructive',
+      });
+      return;
+    }
     createComment(
-      { content: trimmed, parentId },
+      { content: trimmed, parentId, authorId: currentUser.id },
       {
         onSuccess: () => {
           setContent('');
           onSuccess?.();
           toast({ title: parentId ? 'Reply added' : 'Comment added' });
         },
-        onError: () =>
+        onError: (err: any) =>
           toast({
             title: 'Failed to add comment',
+            description:
+              err?.response?.data?.message?.toString?.() ?? undefined,
             variant: 'destructive',
           }),
       }

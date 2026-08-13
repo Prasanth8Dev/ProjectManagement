@@ -5,6 +5,7 @@ export interface CreateCommentInput {
   content: string;
   parentId?: string;
   mentions?: string[];
+  authorId: string;
 }
 
 export interface UpdateCommentInput {
