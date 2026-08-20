@@ -43,7 +43,7 @@ const bugSchema = z.object({
   actualBehavior: z.string().optional(),
   environment: z.string().optional(),
   status: z
-    .enum(['OPEN', 'IN_PROGRESS', 'PENDING', 'IN_REVIEW', 'RESOLVED', 'REOPENED', 'CLOSED', 'WONT_FIX'])
+    .enum(['OPEN', 'IN_PROGRESS', 'PENDING', 'IN_REVIEW', 'TESTING', 'RESOLVED', 'REOPENED', 'CLOSED', 'WONT_FIX'])
     .default('OPEN'),
   severity: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']).default('MEDIUM'),
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).default('MEDIUM'),
@@ -59,6 +59,7 @@ const STATUS_OPTIONS = [
   { value: 'IN_PROGRESS', label: 'In Progress' },
   { value: 'PENDING', label: 'Pending' },
   { value: 'IN_REVIEW', label: 'In Review' },
+  { value: 'TESTING', label: 'Testing / QA' },
   { value: 'RESOLVED', label: 'Resolved' },
   { value: 'REOPENED', label: 'Re-opened' },
   { value: 'CLOSED', label: 'Closed' },

@@ -1,7 +1,8 @@
 'use client';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Bell, Search, User, LogOut, Settings } from 'lucide-react';
+import { Search, User, LogOut, Settings } from 'lucide-react';
+import { NotificationBell } from '@/components/features/notifications/notification-bell';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -45,10 +46,8 @@ export function Topbar() {
           </Link>
         </Button>
 
-        {/* Notifications (static badge for now) */}
-        <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
-          <Bell className="h-4 w-4" />
-        </Button>
+        {/* Notifications */}
+        <NotificationBell />
 
         {/* User menu */}
         <DropdownMenu>

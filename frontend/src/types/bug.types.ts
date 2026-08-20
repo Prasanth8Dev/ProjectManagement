@@ -3,6 +3,7 @@ export type BugStatus =
   | 'IN_PROGRESS'
   | 'PENDING'
   | 'IN_REVIEW'
+  | 'TESTING'
   | 'RESOLVED'
   | 'REOPENED'
   | 'CLOSED'
@@ -25,6 +26,12 @@ export interface BugProject {
   slug: string;
 }
 
+export interface BugLinkedTask {
+  id: string;
+  title: string;
+  status: string;
+}
+
 export interface Bug {
   id: string;
   title: string;
@@ -42,6 +49,7 @@ export interface Bug {
   projectId?: string | null;
   assigneeId?: string | null;
   reporterId: string;
+  linkedTaskId?: string | null;
 
   resolvedAt?: string | null;
   closedAt?: string | null;
@@ -53,4 +61,5 @@ export interface Bug {
   project?: BugProject | null;
   assignee?: BugUser | null;
   reporter: BugUser;
+  linkedTask?: BugLinkedTask | null;
 }

@@ -21,6 +21,22 @@ export class CommentsRepository {
     });
   }
 
+  async findByBugId(bugId: string) {
+    return this.prisma.comment.findMany({
+      where: { bugId, parentId: null },
+      include: {
+        author: { select: { id: true, name: true, avatar: true, email: true } },
+        replies: {
+          include: {
+            author: { select: { id: true, name: true, avatar: true, email: true } },
+          },
+          orderBy: { createdAt: 'asc' },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
   async findById(id: string) {
     return this.prisma.comment.findUnique({
       where: { id },
@@ -31,15 +47,19 @@ export class CommentsRepository {
   }
 
   async create(data: {
-    taskId: string;
+    taskId?: string;
+    bugId?: string;
     authorId: string;
     content: string;
     parentId?: string;
+    mentions?: string[];
   }) {
     return this.prisma.comment.create({
       data: {
         content: data.content,
-        task: { connect: { id: data.taskId } },
+        mentions: data.mentions ?? [],
+        ...(data.taskId && { task: { connect: { id: data.taskId } } }),
+        ...(data.bugId && { bug: { connect: { id: data.bugId } } }),
         author: { connect: { id: data.authorId } },
         ...(data.parentId && { parent: { connect: { id: data.parentId } } }),
       },

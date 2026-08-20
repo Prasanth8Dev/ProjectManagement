@@ -68,10 +68,11 @@ export const useUserActivity = (id: string, params?: PaginationParams) =>
     staleTime: 30_000,
   });
 
-export const useUserSearch = (query: string) =>
+export const useUserSearch = (query: string, enabled: boolean = true) =>
   useQuery({
     queryKey: QUERY_KEYS.users.list({ search: query }),
     queryFn: () => getUsers({ search: query, limit: 20 } as any),
+    enabled,
     staleTime: 30_000,
     select: (data) => data?.data ?? [],
   });

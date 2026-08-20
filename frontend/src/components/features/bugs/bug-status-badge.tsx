@@ -24,6 +24,10 @@ const STATUS_CONFIG: Record<BugStatus, { label: string; className: string }> = {
     label: 'In Review',
     className: 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400',
   },
+  TESTING: {
+    label: 'Testing / QA',
+    className: 'bg-teal-100 text-teal-700 border-teal-200 dark:bg-teal-900/30 dark:text-teal-400',
+  },
   RESOLVED: {
     label: 'Resolved',
     className: 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400',

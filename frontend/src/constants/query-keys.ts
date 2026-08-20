@@ -64,6 +64,12 @@ export const QUERY_KEYS = {
     list: (params?: object) => [...QUERY_KEYS.bugs.lists(), params] as const,
     details: () => [...QUERY_KEYS.bugs.all, 'detail'] as const,
     detail: (id: string) => [...QUERY_KEYS.bugs.details(), id] as const,
+    comments: (id: string) => [...QUERY_KEYS.bugs.detail(id), 'comments'] as const,
+  },
+  notifications: {
+    all: ['notifications'] as const,
+    list: (userId: string, params?: object) => [...QUERY_KEYS.notifications.all, userId, 'list', params] as const,
+    unreadCount: (userId: string) => [...QUERY_KEYS.notifications.all, userId, 'unread-count'] as const,
   },
   search: {
     results: (q: string, type?: string) => ['search', q, type] as const,

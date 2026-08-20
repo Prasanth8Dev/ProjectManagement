@@ -38,6 +38,25 @@ export class CommentsController {
     return this.commentsService.create(taskId, createDto);
   }
 
+  @Get('bugs/:bugId/comments')
+  @ApiOperation({ summary: 'List comments for a bug (with nested replies)' })
+  @ApiParam({ name: 'bugId', type: 'string', format: 'uuid' })
+  @ApiResponse({ status: 200, description: 'Comments retrieved successfully' })
+  findByBugId(@Param('bugId', ParseUUIDPipe) bugId: string) {
+    return this.commentsService.findByBugId(bugId);
+  }
+
+  @Post('bugs/:bugId/comments')
+  @ApiOperation({ summary: 'Create a comment on a bug' })
+  @ApiParam({ name: 'bugId', type: 'string', format: 'uuid' })
+  @ApiResponse({ status: 201, description: 'Comment created successfully' })
+  createForBug(
+    @Param('bugId', ParseUUIDPipe) bugId: string,
+    @Body() createDto: CreateCommentDto,
+  ) {
+    return this.commentsService.createForBug(bugId, createDto);
+  }
+
   @Patch('comments/:id')
   @ApiOperation({ summary: 'Edit a comment' })
   @ApiParam({ name: 'id', type: 'string', format: 'uuid' })

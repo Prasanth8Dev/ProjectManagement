@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsOptional, IsUUID, MinLength } from 'class-validator';
+import { IsString, IsOptional, IsUUID, MinLength, IsArray } from 'class-validator';
 
 export class CreateCommentDto {
   @ApiProperty({ example: 'This task needs more details in the description.' })
@@ -15,6 +15,15 @@ export class CreateCommentDto {
   @ApiProperty({ example: 'uuid-of-author' })
   @IsUUID()
   authorId: string;
+
+  @ApiPropertyOptional({
+    example: ['uuid-of-mentioned-user'],
+    description: 'IDs of users @mentioned in the comment content',
+  })
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  mentions?: string[];
 }
 
 export class UpdateCommentDto {

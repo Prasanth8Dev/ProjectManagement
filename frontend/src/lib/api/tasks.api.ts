@@ -3,6 +3,7 @@ import type { Task, TaskHistoryEntry, TaskStatus } from '@/types/task.types';
 import type { ActivityLog } from '@/types/activity.types';
 import type { ApiResponse, PaginationParams, PaginatedResponse } from '@/types/api.types';
 import type { CreateTaskInput, UpdateTaskInput } from '@/lib/validators/task.schema';
+import { actorParams } from './actor';
 
 export interface TaskFilterParams extends PaginationParams {
   projectId?: string;
@@ -21,11 +22,11 @@ export async function getTask(id: string): Promise<ApiResponse<Task>> {
 }
 
 export async function createTask(data: CreateTaskInput): Promise<Task> {
-  return api.post('/tasks', data);
+  return api.post('/tasks', data, { params: actorParams() });
 }
 
 export async function updateTask(id: string, data: UpdateTaskInput): Promise<Task> {
-  return api.patch(`/tasks/${id}`, data);
+  return api.patch(`/tasks/${id}`, data, { params: actorParams() });
 }
 
 export async function deleteTask(id: string): Promise<void> {
@@ -33,11 +34,11 @@ export async function deleteTask(id: string): Promise<void> {
 }
 
 export async function assignTask(id: string, assigneeId: string | null): Promise<Task> {
-  return api.patch(`/tasks/${id}/assign`, { assigneeId });
+  return api.patch(`/tasks/${id}/assign`, { assigneeId }, { params: actorParams() });
 }
 
 export async function changeTaskStatus(id: string, status: TaskStatus): Promise<Task> {
-  return api.patch(`/tasks/${id}/status`, { status });
+  return api.patch(`/tasks/${id}/status`, { status }, { params: actorParams() });
 }
 
 export async function getTaskHistory(id: string): Promise<TaskHistoryEntry[]> {

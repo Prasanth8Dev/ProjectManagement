@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { TasksRepository } from './tasks.repository';
 import { ActivityService } from '../activity/activity.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { TaskFilterDto, AssignTaskDto, ChangeStatusDto } from './dto/task-filter.dto';
@@ -16,6 +17,7 @@ export class TasksService {
   constructor(
     private readonly tasksRepository: TasksRepository,
     private readonly activityService: ActivityService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async findAll(filterDto: TaskFilterDto) {
@@ -108,6 +110,17 @@ export class TasksService {
         });
       }
 
+      if (createTaskDto.assigneeId) {
+        await this.notificationsService.notify({
+          userId: createTaskDto.assigneeId,
+          actorId: actorUserId,
+          type: 'TASK_ASSIGNED',
+          title: `You were assigned to "${task.title}"`,
+          link: `/tasks/${task.id}`,
+          taskId: task.id,
+        });
+      }
+
       return task;
     } catch (error) {
       throw error;
@@ -177,6 +190,16 @@ export class TasksService {
             newValue: updateTaskDto.assigneeId || undefined,
           });
         }
+        if (updateTaskDto.assigneeId) {
+          await this.notificationsService.notify({
+            userId: updateTaskDto.assigneeId,
+            actorId: actorUserId,
+            type: 'TASK_ASSIGNED',
+            title: `You were assigned to "${existing.title}"`,
+            link: `/tasks/${id}`,
+            taskId: id,
+          });
+        }
       }
 
       // Track priority change
@@ -236,6 +259,17 @@ export class TasksService {
         entityId: id,
         entityTitle: existing.title,
         metadata: { assigneeId: assignDto.assigneeId },
+      });
+    }
+
+    if (assignDto.assigneeId && assignDto.assigneeId !== existing.assigneeId) {
+      await this.notificationsService.notify({
+        userId: assignDto.assigneeId,
+        actorId: actorUserId,
+        type: 'TASK_ASSIGNED',
+        title: `You were assigned to "${existing.title}"`,
+        link: `/tasks/${id}`,
+        taskId: id,
       });
     }
 

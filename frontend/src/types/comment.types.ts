@@ -2,7 +2,8 @@ import type { User } from './user.types';
 
 export interface Comment {
   id: string;
-  taskId: string;
+  taskId?: string | null;
+  bugId?: string | null;
   content: string;
   mentions: string[];
   isEdited: boolean;

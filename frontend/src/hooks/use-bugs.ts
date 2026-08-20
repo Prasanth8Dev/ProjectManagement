@@ -8,6 +8,7 @@ import {
   deleteBug,
   assignBug,
   changeBugStatus,
+  convertBugToTask,
   type BugFilterParams,
   type CreateBugInput,
   type UpdateBugInput,
@@ -79,6 +80,18 @@ export const useChangeBugStatus = (id: string) => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: QUERY_KEYS.bugs.detail(id) });
       qc.invalidateQueries({ queryKey: QUERY_KEYS.bugs.lists() });
+    },
+  });
+};
+
+export const useConvertBugToTask = (id: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => convertBugToTask(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: QUERY_KEYS.bugs.detail(id) });
+      qc.invalidateQueries({ queryKey: QUERY_KEYS.bugs.lists() });
+      qc.invalidateQueries({ queryKey: QUERY_KEYS.tasks.lists() });
     },
   });
 };

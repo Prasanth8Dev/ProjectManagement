@@ -37,6 +37,7 @@ const STATUS_OPTIONS = [
   { value: 'IN_PROGRESS', label: 'In Progress' },
   { value: 'PENDING', label: 'Pending' },
   { value: 'IN_REVIEW', label: 'In Review' },
+  { value: 'TESTING', label: 'Testing / QA' },
   { value: 'RESOLVED', label: 'Resolved' },
   { value: 'REOPENED', label: 'Re-opened' },
   { value: 'CLOSED', label: 'Closed' },

@@ -32,8 +32,11 @@ export class BugsController {
   @Post()
   @ApiOperation({ summary: 'Report a new bug' })
   @ApiResponse({ status: 201, description: 'Bug reported successfully' })
-  create(@Body() createBugDto: CreateBugDto) {
-    return this.bugsService.create(createBugDto);
+  create(
+    @Body() createBugDto: CreateBugDto,
+    @Query('actorUserId') actorUserId?: string,
+  ) {
+    return this.bugsService.create(createBugDto, actorUserId);
   }
 
   @Get(':id')
@@ -52,8 +55,9 @@ export class BugsController {
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateBugDto: UpdateBugDto,
+    @Query('actorUserId') actorUserId?: string,
   ) {
-    return this.bugsService.update(id, updateBugDto);
+    return this.bugsService.update(id, updateBugDto, actorUserId);
   }
 
   @Delete(':id')
@@ -71,8 +75,9 @@ export class BugsController {
   assign(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() assignDto: AssignBugDto,
+    @Query('actorUserId') actorUserId?: string,
   ) {
-    return this.bugsService.assign(id, assignDto);
+    return this.bugsService.assign(id, assignDto, actorUserId);
   }
 
   @Patch(':id/status')
@@ -81,7 +86,18 @@ export class BugsController {
   changeStatus(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() statusDto: ChangeBugStatusDto,
+    @Query('actorUserId') actorUserId?: string,
   ) {
-    return this.bugsService.changeStatus(id, statusDto);
+    return this.bugsService.changeStatus(id, statusDto, actorUserId);
+  }
+
+  @Post(':id/convert-to-task')
+  @ApiOperation({ summary: 'Create a Task from this bug and link the two together' })
+  @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
+  convertToTask(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query('actorUserId') actorUserId?: string,
+  ) {
+    return this.bugsService.convertToTask(id, actorUserId);
   }
 }

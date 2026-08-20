@@ -12,6 +12,7 @@ export class BugsRepository {
       project: { select: { id: true, name: true, color: true, slug: true } },
       assignee: { select: { id: true, name: true, avatar: true, email: true } },
       reporter: { select: { id: true, name: true, avatar: true, email: true } },
+      linkedTask: { select: { id: true, title: true, status: true } },
     };
   }
 
