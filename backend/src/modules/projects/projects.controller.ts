@@ -83,6 +83,14 @@ export class ProjectsController {
     return this.projectsService.getStats(id);
   }
 
+  @Get(':id/productivity')
+  @ApiOperation({ summary: 'Get project time-tracking / productivity analytics' })
+  @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
+  @ApiResponse({ status: 200, description: 'Productivity stats retrieved successfully' })
+  getProductivityStats(@Param('id', ParseUUIDPipe) id: string) {
+    return this.projectsService.getProductivityStats(id);
+  }
+
   @Post(':id/members')
   @ApiOperation({ summary: 'Add a member to a project' })
   @ApiParam({ name: 'id', type: 'string', format: 'uuid' })

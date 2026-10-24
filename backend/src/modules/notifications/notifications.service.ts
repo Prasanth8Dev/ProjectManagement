@@ -14,6 +14,8 @@ export interface NotifyInput {
   taskId?: string;
   bugId?: string;
   commentId?: string;
+  meetingId?: string;
+  actionItemId?: string;
 }
 
 @Injectable()
@@ -71,6 +73,8 @@ export class NotificationsService {
         taskId: input.taskId,
         bugId: input.bugId,
         commentId: input.commentId,
+        meetingId: input.meetingId,
+        actionItemId: input.actionItemId,
       });
     } catch (err) {
       this.logger.warn(`Failed to create notification for user ${input.userId}: ${err}`);

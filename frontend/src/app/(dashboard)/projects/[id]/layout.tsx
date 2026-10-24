@@ -13,6 +13,7 @@ const tabs = [
   { label: 'Tasks', href: (id: string) => ROUTES.PROJECT_TASKS(id) },
   { label: 'Timeline', href: (id: string) => ROUTES.PROJECT_TIMELINE(id) },
   { label: 'Milestones', href: (id: string) => ROUTES.PROJECT_MILESTONES(id) },
+  { label: 'Meetings', href: (id: string) => ROUTES.PROJECT_MEETINGS(id) },
   { label: 'Members', href: (id: string) => ROUTES.PROJECT_MEMBERS(id) },
   { label: 'Settings', href: (id: string) => ROUTES.PROJECT_SETTINGS(id) },
 ];

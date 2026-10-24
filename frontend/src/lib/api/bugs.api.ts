@@ -1,5 +1,6 @@
 import api from './axios';
 import type { Bug, BugStatus } from '@/types/bug.types';
+import type { BugHistoryEntry } from '@/types/bug-history.types';
 import type { PaginationParams, PaginatedResponse, ApiResponse } from '@/types/api.types';
 import { actorParams } from './actor';
 
@@ -65,4 +66,8 @@ export async function changeBugStatus(id: string, status: BugStatus): Promise<Bu
 
 export async function convertBugToTask(id: string): Promise<Bug> {
   return api.post(`/bugs/${id}/convert-to-task`, undefined, { params: actorParams() });
+}
+
+export async function getBugHistory(id: string): Promise<BugHistoryEntry[]> {
+  return api.get(`/bugs/${id}/history`);
 }

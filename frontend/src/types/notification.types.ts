@@ -4,7 +4,15 @@ export type NotificationType =
   | 'BUG_ASSIGNED'
   | 'TASK_COMMENT'
   | 'BUG_COMMENT'
-  | 'BUG_LINKED_TO_TASK';
+  | 'BUG_LINKED_TO_TASK'
+  | 'TASK_BLOCKED'
+  | 'TASK_UNBLOCKED'
+  | 'TASK_ETA_APPROACHING'
+  | 'TASK_OVERDUE'
+  | 'TASK_COMPLETED'
+  | 'REVIEW_REQUESTED'
+  | 'MOM_ACTION_ITEM_ASSIGNED'
+  | 'MOM_ACTION_ITEM_DUE_SOON';
 
 export interface NotificationActor {
   id: string;
@@ -24,6 +32,8 @@ export interface AppNotification {
   taskId?: string | null;
   bugId?: string | null;
   commentId?: string | null;
+  meetingId?: string | null;
+  actionItemId?: string | null;
   isRead: boolean;
   readAt?: string | null;
   createdAt: string;

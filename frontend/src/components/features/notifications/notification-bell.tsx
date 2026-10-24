@@ -1,6 +1,20 @@
 'use client';
 import { useRouter } from 'next/navigation';
-import { Bell, AtSign, UserPlus, MessageSquare, Link2, CheckCheck } from 'lucide-react';
+import {
+  Bell,
+  AtSign,
+  UserPlus,
+  MessageSquare,
+  Link2,
+  CheckCheck,
+  Octagon,
+  PlayCircle,
+  CalendarClock,
+  AlertTriangle,
+  CheckCircle2,
+  Eye,
+  ListChecks,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -27,6 +41,14 @@ const TYPE_ICON: Record<NotificationType, React.ComponentType<{ className?: stri
   TASK_COMMENT: MessageSquare,
   BUG_COMMENT: MessageSquare,
   BUG_LINKED_TO_TASK: Link2,
+  TASK_BLOCKED: Octagon,
+  TASK_UNBLOCKED: PlayCircle,
+  TASK_ETA_APPROACHING: CalendarClock,
+  TASK_OVERDUE: AlertTriangle,
+  TASK_COMPLETED: CheckCircle2,
+  REVIEW_REQUESTED: Eye,
+  MOM_ACTION_ITEM_ASSIGNED: ListChecks,
+  MOM_ACTION_ITEM_DUE_SOON: CalendarClock,
 };
 
 export function NotificationBell() {

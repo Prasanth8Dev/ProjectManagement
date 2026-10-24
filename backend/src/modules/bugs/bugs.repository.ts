@@ -104,4 +104,24 @@ export class BugsRepository {
   async delete(id: string) {
     return this.prisma.bug.delete({ where: { id } });
   }
+
+  async createHistory(data: {
+    bugId: string;
+    userId: string;
+    field: string;
+    oldValue?: string;
+    newValue?: string;
+  }) {
+    return this.prisma.bugHistory.create({ data });
+  }
+
+  async getHistory(bugId: string) {
+    return this.prisma.bugHistory.findMany({
+      where: { bugId },
+      include: {
+        user: { select: { id: true, name: true, avatar: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
 }

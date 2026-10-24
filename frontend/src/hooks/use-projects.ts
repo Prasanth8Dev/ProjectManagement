@@ -8,6 +8,7 @@ import {
   deleteProject,
   archiveProject,
   getProjectStats,
+  getProjectProductivityStats,
   addProjectMember,
   removeProjectMember,
   getProjectActivity,
@@ -35,6 +36,14 @@ export const useProjectStats = (id: string) =>
     queryKey: QUERY_KEYS.projects.stats(id),
     queryFn: () => getProjectStats(id),
     enabled: !!id,
+  });
+
+export const useProjectProductivityStats = (id: string) =>
+  useQuery({
+    queryKey: QUERY_KEYS.projects.productivity(id),
+    queryFn: () => getProjectProductivityStats(id),
+    enabled: !!id,
+    staleTime: 30_000,
   });
 
 export const useProjectMembers = (id: string) =>

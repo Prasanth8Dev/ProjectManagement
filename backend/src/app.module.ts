@@ -20,6 +20,10 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { BugsModule } from './modules/bugs/bugs.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { InterventionsModule } from './modules/interventions/interventions.module';
+import { PerformanceModule } from './modules/performance/performance.module';
+import { MeetingsModule } from './modules/meetings/meetings.module';
+import { SchedulerModule } from './modules/scheduler/scheduler.module';
 
 @Module({
   imports: [
@@ -44,6 +48,10 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
     AuthModule,
     BugsModule,
     NotificationsModule,
+    InterventionsModule,
+    PerformanceModule,
+    MeetingsModule,
+    SchedulerModule,
   ],
 })
 export class AppModule {}

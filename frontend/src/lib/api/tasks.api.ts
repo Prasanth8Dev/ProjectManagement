@@ -1,5 +1,5 @@
 import api from './axios';
-import type { Task, TaskHistoryEntry, TaskStatus } from '@/types/task.types';
+import type { Task, TaskActivityEvent, TaskTimeTracking, TaskStatus } from '@/types/task.types';
 import type { ActivityLog } from '@/types/activity.types';
 import type { ApiResponse, PaginationParams, PaginatedResponse } from '@/types/api.types';
 import type { CreateTaskInput, UpdateTaskInput } from '@/lib/validators/task.schema';
@@ -41,10 +41,50 @@ export async function changeTaskStatus(id: string, status: TaskStatus): Promise<
   return api.patch(`/tasks/${id}/status`, { status }, { params: actorParams() });
 }
 
-export async function getTaskHistory(id: string): Promise<TaskHistoryEntry[]> {
+export async function getTaskHistory(id: string): Promise<TaskActivityEvent[]> {
   return api.get(`/tasks/${id}/history`);
 }
 
 export async function getTaskActivity(id: string): Promise<ActivityLog[]> {
   return api.get(`/tasks/${id}/activity`);
+}
+
+export async function getTaskTimeTracking(id: string): Promise<TaskTimeTracking> {
+  return api.get(`/tasks/${id}/time-tracking`);
+}
+
+export async function startTask(id: string): Promise<Task> {
+  return api.post(`/tasks/${id}/start`, undefined, { params: actorParams() });
+}
+
+export async function pauseTask(id: string, reason?: string): Promise<Task> {
+  return api.post(`/tasks/${id}/pause`, { reason }, { params: actorParams() });
+}
+
+export async function resumeTask(id: string): Promise<Task> {
+  return api.post(`/tasks/${id}/resume`, undefined, { params: actorParams() });
+}
+
+export async function blockTask(id: string, reason?: string): Promise<Task> {
+  return api.post(`/tasks/${id}/block`, { reason }, { params: actorParams() });
+}
+
+export async function unblockTask(id: string): Promise<Task> {
+  return api.post(`/tasks/${id}/unblock`, undefined, { params: actorParams() });
+}
+
+export async function completeTask(id: string, comment?: string): Promise<Task> {
+  return api.post(`/tasks/${id}/complete`, { comment }, { params: actorParams() });
+}
+
+export async function sendTaskForReview(id: string, comment?: string): Promise<Task> {
+  return api.post(`/tasks/${id}/send-for-review`, { comment }, { params: actorParams() });
+}
+
+export async function completeTaskReview(id: string, comment?: string): Promise<Task> {
+  return api.post(`/tasks/${id}/complete-review`, { comment }, { params: actorParams() });
+}
+
+export async function closeTask(id: string, comment?: string): Promise<Task> {
+  return api.post(`/tasks/${id}/close`, { comment }, { params: actorParams() });
 }

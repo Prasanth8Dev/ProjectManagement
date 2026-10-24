@@ -57,6 +57,25 @@ export class CommentsController {
     return this.commentsService.createForBug(bugId, createDto);
   }
 
+  @Get('action-items/:actionItemId/comments')
+  @ApiOperation({ summary: 'List comments on a meeting action item' })
+  @ApiParam({ name: 'actionItemId', type: 'string', format: 'uuid' })
+  @ApiResponse({ status: 200, description: 'Comments retrieved successfully' })
+  findByActionItemId(@Param('actionItemId', ParseUUIDPipe) actionItemId: string) {
+    return this.commentsService.findByActionItemId(actionItemId);
+  }
+
+  @Post('action-items/:actionItemId/comments')
+  @ApiOperation({ summary: 'Comment on a meeting action item' })
+  @ApiParam({ name: 'actionItemId', type: 'string', format: 'uuid' })
+  @ApiResponse({ status: 201, description: 'Comment created successfully' })
+  createForActionItem(
+    @Param('actionItemId', ParseUUIDPipe) actionItemId: string,
+    @Body() createDto: CreateCommentDto,
+  ) {
+    return this.commentsService.createForActionItem(actionItemId, createDto);
+  }
+
   @Patch('comments/:id')
   @ApiOperation({ summary: 'Edit a comment' })
   @ApiParam({ name: 'id', type: 'string', format: 'uuid' })

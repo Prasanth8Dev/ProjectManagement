@@ -10,6 +10,8 @@ export const ROUTES = {
   PROJECT_MILESTONES: (id: string) => `/projects/${id}/milestones`,
   PROJECT_MEMBERS: (id: string) => `/projects/${id}/members`,
   PROJECT_SETTINGS: (id: string) => `/projects/${id}/settings`,
+  PROJECT_MEETINGS: (id: string) => `/projects/${id}/meetings`,
+  MEETING: (id: string) => `/meetings/${id}`,
   TASKS: '/tasks',
   TASK: (id: string) => `/tasks/${id}`,
   TEAMS: '/teams',
@@ -30,4 +32,6 @@ export const ROUTES = {
   PROFILE: '/profile',
   BUGS: '/bugs',
   BUG: (id: string) => `/bugs/${id}`,
+  PERFORMANCE: '/performance',
+  PERFORMANCE_DETAIL: (id: string) => `/performance/${id}`,
 } as const;

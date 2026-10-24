@@ -91,6 +91,14 @@ export class BugsController {
     return this.bugsService.changeStatus(id, statusDto, actorUserId);
   }
 
+  @Get(':id/history')
+  @ApiOperation({ summary: 'Get bug change history' })
+  @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
+  @ApiResponse({ status: 200, description: 'History retrieved successfully' })
+  getHistory(@Param('id', ParseUUIDPipe) id: string) {
+    return this.bugsService.getHistory(id);
+  }
+
   @Post(':id/convert-to-task')
   @ApiOperation({ summary: 'Create a Task from this bug and link the two together' })
   @ApiParam({ name: 'id', type: 'string', format: 'uuid' })

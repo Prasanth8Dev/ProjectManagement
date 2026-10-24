@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Prisma, ProjectStatus, ProjectPriority, ProjectMemberRole } from '@prisma/client';
 import { getPaginationParams } from '../../common/utils/pagination.util';
+import { computeTaskTimeTracking } from '../tasks/task-time-tracking.util';
 
 @Injectable()
 export class ProjectsRepository {
@@ -168,6 +169,116 @@ export class ProjectsRepository {
       overdueTasks,
       completionPercent:
         totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0,
+    };
+  }
+
+  /**
+   * Project-level time/productivity analytics, derived entirely from the
+   * TaskActivity event log (nothing here is stored — recomputed on read so
+   * it can never drift or be hand-edited). Tasks with no startedAt (created
+   * before event tracking existed, or never started) are excluded from the
+   * duration averages but still counted in the status breakdown.
+   */
+  async getProductivityStats(projectId: string) {
+    const tasks = await this.prisma.task.findMany({
+      where: { projectId, isArchived: false },
+      select: {
+        id: true,
+        status: true,
+        isPaused: true,
+        isBlocked: true,
+        assignedAt: true,
+        startedAt: true,
+        completedAt: true,
+        dueDate: true,
+      },
+    });
+
+    const totalTasks = tasks.length;
+    const completedTasks = tasks.filter((t) => t.status === 'DONE' || t.status === 'CLOSED').length;
+    const inProgressTasks = tasks.filter((t) => t.status === 'IN_PROGRESS').length;
+    const blockedTasks = tasks.filter((t) => t.isBlocked).length;
+    const now = new Date();
+    const overdueTasks = tasks.filter(
+      (t) =>
+        t.dueDate &&
+        t.dueDate < now &&
+        !['DONE', 'CLOSED', 'CANCELLED'].includes(t.status),
+    ).length;
+
+    if (totalTasks === 0) {
+      return {
+        totalTasks: 0,
+        completedTasks: 0,
+        inProgressTasks: 0,
+        blockedTasks: 0,
+        overdueTasks: 0,
+        avgStartDelayMs: null,
+        avgCompletionTimeMs: null,
+        avgActiveWorkingTimeMs: null,
+        totalBlockedTimeMs: 0,
+        totalPausedTimeMs: 0,
+        etaVarianceMs: null,
+        tasksWithHistoricalDataUnavailable: 0,
+      };
+    }
+
+    const events = await this.prisma.taskActivity.findMany({
+      where: { taskId: { in: tasks.map((t) => t.id) } },
+      orderBy: { createdAt: 'asc' },
+      select: { taskId: true, eventType: true, createdAt: true },
+    });
+
+    const eventsByTask = new Map<string, typeof events>();
+    for (const event of events) {
+      const list = eventsByTask.get(event.taskId) ?? [];
+      list.push(event);
+      eventsByTask.set(event.taskId, list);
+    }
+
+    const startDelays: number[] = [];
+    const completionTimes: number[] = [];
+    const activeWorkingTimes: number[] = [];
+    const etaVariances: number[] = [];
+    let totalBlockedTimeMs = 0;
+    let totalPausedTimeMs = 0;
+    let historicalUnavailableCount = 0;
+
+    for (const task of tasks) {
+      const tracking = computeTaskTimeTracking(task, eventsByTask.get(task.id) ?? []);
+
+      if (tracking.historicalTrackingUnavailable) {
+        historicalUnavailableCount += 1;
+        continue;
+      }
+
+      if (tracking.assignToStartMs !== null) startDelays.push(tracking.assignToStartMs);
+      if (tracking.startToCompletionMs !== null) completionTimes.push(tracking.startToCompletionMs);
+      if (tracking.activeWorkingTimeMs !== null) activeWorkingTimes.push(tracking.activeWorkingTimeMs);
+      totalBlockedTimeMs += tracking.blockedDurationMs;
+      totalPausedTimeMs += tracking.pausedDurationMs;
+
+      if (tracking.completedAt && task.dueDate) {
+        etaVariances.push(new Date(tracking.completedAt).getTime() - task.dueDate.getTime());
+      }
+    }
+
+    const avg = (values: number[]) =>
+      values.length > 0 ? Math.round(values.reduce((a, b) => a + b, 0) / values.length) : null;
+
+    return {
+      totalTasks,
+      completedTasks,
+      inProgressTasks,
+      blockedTasks,
+      overdueTasks,
+      avgStartDelayMs: avg(startDelays),
+      avgCompletionTimeMs: avg(completionTimes),
+      avgActiveWorkingTimeMs: avg(activeWorkingTimes),
+      totalBlockedTimeMs,
+      totalPausedTimeMs,
+      etaVarianceMs: avg(etaVariances),
+      tasksWithHistoricalDataUnavailable: historicalUnavailableCount,
     };
   }
 

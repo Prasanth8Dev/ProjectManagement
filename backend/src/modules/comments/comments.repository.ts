@@ -37,6 +37,22 @@ export class CommentsRepository {
     });
   }
 
+  async findByActionItemId(actionItemId: string) {
+    return this.prisma.comment.findMany({
+      where: { actionItemId, parentId: null },
+      include: {
+        author: { select: { id: true, name: true, avatar: true, email: true } },
+        replies: {
+          include: {
+            author: { select: { id: true, name: true, avatar: true, email: true } },
+          },
+          orderBy: { createdAt: 'asc' },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
   async findById(id: string) {
     return this.prisma.comment.findUnique({
       where: { id },
@@ -49,6 +65,7 @@ export class CommentsRepository {
   async create(data: {
     taskId?: string;
     bugId?: string;
+    actionItemId?: string;
     authorId: string;
     content: string;
     parentId?: string;
@@ -60,6 +77,7 @@ export class CommentsRepository {
         mentions: data.mentions ?? [],
         ...(data.taskId && { task: { connect: { id: data.taskId } } }),
         ...(data.bugId && { bug: { connect: { id: data.bugId } } }),
+        ...(data.actionItemId && { actionItem: { connect: { id: data.actionItemId } } }),
         author: { connect: { id: data.authorId } },
         ...(data.parentId && { parent: { connect: { id: data.parentId } } }),
       },

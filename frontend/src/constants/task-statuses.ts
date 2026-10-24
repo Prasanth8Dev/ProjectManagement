@@ -16,6 +16,7 @@ export const TASK_STATUS_CONFIG: Record<
   IN_REVIEW: { label: 'In Review', color: 'text-purple-600', bgColor: 'bg-purple-100', icon: '◐', dotColor: 'bg-purple-400' },
   TESTING: { label: 'Testing', color: 'text-orange-600', bgColor: 'bg-orange-100', icon: '◕', dotColor: 'bg-orange-400' },
   DONE: { label: 'Done', color: 'text-green-600', bgColor: 'bg-green-100', icon: '●', dotColor: 'bg-green-500' },
+  CLOSED: { label: 'Closed', color: 'text-slate-500', bgColor: 'bg-slate-200', icon: '■', dotColor: 'bg-slate-500' },
   CANCELLED: { label: 'Cancelled', color: 'text-red-600', bgColor: 'bg-red-100', icon: '✕', dotColor: 'bg-red-400' },
 };
 

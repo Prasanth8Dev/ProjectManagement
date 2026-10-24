@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, FolderKanban, CheckSquare, Users, FileText,
-  BarChart3, Search, UserCircle, ChevronLeft, ChevronRight, Bug
+  BarChart3, Search, UserCircle, ChevronLeft, ChevronRight, Bug, Gauge
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { useUIStore } from '@/stores/ui.store';
@@ -36,6 +36,10 @@ const NAV_ITEMS: NavItem[] = [
   {
     label: 'Reports', href: ROUTES.REPORTS, icon: BarChart3,
     roles: ['ADMIN', 'MANAGER'],
+  },
+  {
+    label: 'Performance', href: ROUTES.PERFORMANCE, icon: Gauge,
+    roles: ['ADMIN', 'MANAGER', 'PROJECT_MANAGER'],
   },
   {
     label: 'Members', href: ROUTES.MEMBERS, icon: UserCircle,

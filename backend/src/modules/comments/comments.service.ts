@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/commo
 import { CommentsRepository } from './comments.repository';
 import { TasksService } from '../tasks/tasks.service';
 import { BugsService } from '../bugs/bugs.service';
+import { MeetingsService } from '../meetings/meetings.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CreateCommentDto, UpdateCommentDto } from './dto/comment.dto';
 
@@ -11,6 +12,7 @@ export class CommentsService {
     private readonly commentsRepository: CommentsRepository,
     private readonly tasksService: TasksService,
     private readonly bugsService: BugsService,
+    private readonly meetingsService: MeetingsService,
     private readonly notificationsService: NotificationsService,
   ) {}
 
@@ -70,6 +72,8 @@ export class CommentsService {
       parentId: createDto.parentId,
       mentions: createDto.mentions,
     });
+
+    await this.tasksService.logCommentActivity(taskId, createDto.authorId, comment.id);
 
     // Notify the task's assignee and reporter (skip whoever just commented).
     const recipients = new Set(
@@ -147,6 +151,45 @@ export class CommentsService {
       commentId: comment.id,
       entityTitle: bug.title,
     });
+
+    return comment;
+  }
+
+  async findByActionItemId(actionItemId: string) {
+    await this.meetingsService.findActionItemById(actionItemId);
+    return this.commentsRepository.findByActionItemId(actionItemId);
+  }
+
+  async createForActionItem(actionItemId: string, createDto: CreateCommentDto) {
+    const actionItem = await this.meetingsService.findActionItemById(actionItemId);
+
+    if (createDto.parentId) {
+      const parent = await this.commentsRepository.findById(createDto.parentId);
+      if (!parent) {
+        throw new NotFoundException(`Parent comment with id ${createDto.parentId} not found`);
+      }
+    }
+
+    const comment = await this.commentsRepository.create({
+      actionItemId,
+      authorId: createDto.authorId,
+      content: createDto.content,
+      parentId: createDto.parentId,
+      mentions: createDto.mentions,
+    });
+
+    if (actionItem.assigneeId && actionItem.assigneeId !== createDto.authorId) {
+      await this.notificationsService.notify({
+        userId: actionItem.assigneeId,
+        actorId: createDto.authorId,
+        type: 'MOM_ACTION_ITEM_ASSIGNED',
+        title: `New comment on action item "${actionItem.title}"`,
+        link: `/meetings/${actionItem.meeting.id}`,
+        meetingId: actionItem.meeting.id,
+        actionItemId,
+        commentId: comment.id,
+      });
+    }
 
     return comment;
   }

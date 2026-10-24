@@ -57,3 +57,19 @@ export interface ProjectStats {
 export type ProjectWithStats = Project & {
   completedTasks?: number;
 };
+
+export interface ProjectProductivityStats {
+  totalTasks: number;
+  completedTasks: number;
+  inProgressTasks: number;
+  blockedTasks: number;
+  overdueTasks: number;
+  avgStartDelayMs: number | null;
+  avgCompletionTimeMs: number | null;
+  avgActiveWorkingTimeMs: number | null;
+  totalBlockedTimeMs: number;
+  totalPausedTimeMs: number;
+  /** Positive = tasks finished late on average, negative = finished early. */
+  etaVarianceMs: number | null;
+  tasksWithHistoricalDataUnavailable: number;
+}

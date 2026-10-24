@@ -122,7 +122,7 @@ export class TasksRepository {
           },
           orderBy: { createdAt: 'desc' },
         },
-        history: {
+        activityEvents: {
           include: {
             user: { select: { id: true, name: true, avatar: true } },
           },
@@ -152,18 +152,21 @@ export class TasksRepository {
     return this.prisma.task.delete({ where: { id } });
   }
 
-  async createHistory(data: {
+  async createActivity(data: {
     taskId: string;
-    userId: string;
-    field: string;
-    oldValue?: string;
+    userId?: string;
+    eventType: Prisma.TaskActivityUncheckedCreateInput['eventType'];
+    previousValue?: string;
     newValue?: string;
+    reason?: string;
+    comment?: string;
   }) {
-    return this.prisma.taskHistory.create({ data });
+    return this.prisma.taskActivity.create({ data });
   }
 
-  async getHistory(taskId: string) {
-    return this.prisma.taskHistory.findMany({
+  /** Full lifecycle event log for a task, newest first — used by the UI timeline. */
+  async getActivityEvents(taskId: string) {
+    return this.prisma.taskActivity.findMany({
       where: { taskId },
       include: {
         user: { select: { id: true, name: true, avatar: true } },
@@ -172,7 +175,15 @@ export class TasksRepository {
     });
   }
 
-  async getActivity(taskId: string) {
+  /** Same events, oldest first, unfiltered — used for duration computation. */
+  async getActivityEventsAsc(taskId: string) {
+    return this.prisma.taskActivity.findMany({
+      where: { taskId },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  async getActivityLog(taskId: string) {
     return this.prisma.activityLog.findMany({
       where: { taskId },
       include: {

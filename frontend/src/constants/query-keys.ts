@@ -13,6 +13,7 @@ export const QUERY_KEYS = {
     details: () => [...QUERY_KEYS.projects.all, 'detail'] as const,
     detail: (id: string) => [...QUERY_KEYS.projects.details(), id] as const,
     stats: (id: string) => [...QUERY_KEYS.projects.detail(id), 'stats'] as const,
+    productivity: (id: string) => [...QUERY_KEYS.projects.detail(id), 'productivity'] as const,
     members: (id: string) => [...QUERY_KEYS.projects.detail(id), 'members'] as const,
     activity: (id: string) => [...QUERY_KEYS.projects.detail(id), 'activity'] as const,
   },
@@ -23,6 +24,7 @@ export const QUERY_KEYS = {
     details: () => [...QUERY_KEYS.tasks.all, 'detail'] as const,
     detail: (id: string) => [...QUERY_KEYS.tasks.details(), id] as const,
     history: (id: string) => [...QUERY_KEYS.tasks.detail(id), 'history'] as const,
+    timeTracking: (id: string) => [...QUERY_KEYS.tasks.detail(id), 'time-tracking'] as const,
     subtasks: (id: string) => [...QUERY_KEYS.tasks.detail(id), 'subtasks'] as const,
     checklist: (id: string) => [...QUERY_KEYS.tasks.detail(id), 'checklist'] as const,
     comments: (id: string) => [...QUERY_KEYS.tasks.detail(id), 'comments'] as const,
@@ -80,5 +82,22 @@ export const QUERY_KEYS = {
     employee: (userId: string, params?: object) => ['reports', 'employee', userId, params] as const,
     project: (projectId: string, params?: object) =>
       ['reports', 'project', projectId, params] as const,
+  },
+  interventions: {
+    task: (taskId: string) => ['interventions', 'task', taskId] as const,
+    bug: (bugId: string) => ['interventions', 'bug', bugId] as const,
+    employee: (employeeId: string) => ['interventions', 'employee', employeeId] as const,
+  },
+  performance: {
+    summary: ['performance', 'summary'] as const,
+    detail: (userId: string) => ['performance', 'detail', userId] as const,
+  },
+  meetings: {
+    all: ['meetings'] as const,
+    list: (projectId: string, type?: string) => ['meetings', 'list', projectId, type] as const,
+    detail: (id: string) => ['meetings', 'detail', id] as const,
+  },
+  actionItems: {
+    comments: (id: string) => ['action-items', id, 'comments'] as const,
   },
 } as const;

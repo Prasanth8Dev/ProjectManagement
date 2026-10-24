@@ -51,14 +51,14 @@ export class KanbanRepository {
     return result._max.position ?? 0;
   }
 
-  async createHistory(data: {
+  async createActivity(data: {
     taskId: string;
     userId: string;
-    field: string;
-    oldValue?: string;
+    eventType: 'STATUS_CHANGED';
+    previousValue?: string;
     newValue?: string;
   }) {
-    return this.prisma.taskHistory.create({ data });
+    return this.prisma.taskActivity.create({ data });
   }
 
   async findTaskById(id: string) {

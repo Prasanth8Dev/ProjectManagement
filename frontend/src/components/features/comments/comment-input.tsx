@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
 import { UserAvatar } from '@/components/shared/user-avatar';
-import { useCreateComment, useCreateBugComment } from '@/hooks/use-comments';
+import { useCreateComment, useCreateBugComment, useCreateActionItemComment } from '@/hooks/use-comments';
 import { useUserSearch } from '@/hooks/use-members';
 import { useDebounce } from '@/hooks/use-debounce';
 import { toast } from '@/components/ui/use-toast';
@@ -15,6 +15,7 @@ import { useAuthStore } from '@/stores/auth.store';
 interface CommentInputProps {
   taskId?: string;
   bugId?: string;
+  actionItemId?: string;
   parentId?: string;
   onSuccess?: () => void;
   placeholder?: string;
@@ -25,6 +26,7 @@ interface CommentInputProps {
 export function CommentInput({
   taskId,
   bugId,
+  actionItemId,
   parentId,
   onSuccess,
   placeholder = 'Write a comment...',
@@ -46,8 +48,14 @@ export function CommentInput({
   // the id that was actually passed in gets invoked on submit.
   const { mutate: createTaskComment, isPending: isCreatingTaskComment } = useCreateComment(taskId ?? '');
   const { mutate: createBugComment, isPending: isCreatingBugComment } = useCreateBugComment(bugId ?? '');
-  const createComment = bugId ? createBugComment : createTaskComment;
-  const isPending = bugId ? isCreatingBugComment : isCreatingTaskComment;
+  const { mutate: createActionItemComment, isPending: isCreatingActionItemComment } =
+    useCreateActionItemComment(actionItemId ?? '');
+  const createComment = actionItemId ? createActionItemComment : bugId ? createBugComment : createTaskComment;
+  const isPending = actionItemId
+    ? isCreatingActionItemComment
+    : bugId
+      ? isCreatingBugComment
+      : isCreatingTaskComment;
   const { currentUser } = useAuthStore();
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {

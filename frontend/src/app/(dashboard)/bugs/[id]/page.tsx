@@ -32,6 +32,8 @@ import { BugSeverityBadge } from '@/components/features/bugs/bug-severity-badge'
 import { BugPlatformBadge } from '@/components/features/bugs/bug-platform-badge';
 import { BugComments } from '@/components/features/bugs/bug-comments';
 import { BugFormSheet } from '@/components/features/bugs/bug-form-sheet';
+import { BugActivityTimeline } from '@/components/features/bugs/bug-activity-timeline';
+import { LogInterventionButton } from '@/components/features/interventions/log-intervention-button';
 import { useBug, useDeleteBug, useChangeBugStatus, useAssignBug, useConvertBugToTask } from '@/hooks/use-bugs';
 import { UserSelect } from '@/components/shared/user-select';
 import { toast } from '@/components/ui/use-toast';
@@ -372,6 +374,21 @@ export default function BugDetailPage() {
         </CardHeader>
         <CardContent>
           <BugComments bugId={bug.id} />
+        </CardContent>
+      </Card>
+
+      {/* Activity Timeline */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
+          <CardTitle className="text-base">Activity Timeline</CardTitle>
+          <LogInterventionButton
+            scope="bug"
+            entityId={bug.id}
+            employeeId={bug.assigneeId ?? bug.assignee?.id}
+          />
+        </CardHeader>
+        <CardContent>
+          <BugActivityTimeline bugId={bug.id} />
         </CardContent>
       </Card>
 

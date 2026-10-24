@@ -10,9 +10,28 @@ export type TaskStatus =
   | 'IN_REVIEW'
   | 'TESTING'
   | 'DONE'
+  | 'CLOSED'
   | 'CANCELLED';
 
 export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+
+export type TaskEventType =
+  | 'TASK_CREATED'
+  | 'TASK_ASSIGNED'
+  | 'TASK_REASSIGNED'
+  | 'TASK_STARTED'
+  | 'TASK_PAUSED'
+  | 'TASK_RESUMED'
+  | 'TASK_BLOCKED'
+  | 'TASK_UNBLOCKED'
+  | 'TASK_COMPLETED'
+  | 'REVIEW_STARTED'
+  | 'REVIEW_COMPLETED'
+  | 'TASK_CLOSED'
+  | 'COMMENT_ADDED'
+  | 'STATUS_CHANGED'
+  | 'PRIORITY_CHANGED'
+  | 'ETA_CHANGED';
 
 export interface ChecklistItem {
   id: string;
@@ -23,15 +42,34 @@ export interface ChecklistItem {
   completedAt?: string;
 }
 
-export interface TaskHistoryEntry {
+/** One immutable entry from the TaskActivity event log. */
+export interface TaskActivityEvent {
   id: string;
   taskId: string;
-  action?: string;
-  field: string;
-  oldValue?: string;
-  newValue?: string;
-  user: User;
+  eventType: TaskEventType;
+  previousValue?: string | null;
+  newValue?: string | null;
+  reason?: string | null;
+  comment?: string | null;
+  user: User | null;
   createdAt: string;
+}
+
+// Kept as an alias so any lingering references still compile — prefer TaskActivityEvent.
+export type TaskHistoryEntry = TaskActivityEvent;
+
+export interface TaskTimeTracking {
+  historicalTrackingUnavailable: boolean;
+  assignedAt: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  assignToStartMs: number | null;
+  startToCompletionMs: number | null;
+  assignToCompletionMs: number | null;
+  pausedDurationMs: number;
+  blockedDurationMs: number;
+  reviewDurationMs: number;
+  activeWorkingTimeMs: number | null;
 }
 
 export interface Task {
@@ -47,6 +85,12 @@ export interface Task {
   actualHours?: number;
   position: number;
   isArchived: boolean;
+  assignedAt?: string | null;
+  startedAt?: string | null;
+  isPaused: boolean;
+  isBlocked: boolean;
+  blockedReason?: string | null;
+  reporterId?: string;
   project: Project;
   projectId?: string;
   milestone?: Milestone;

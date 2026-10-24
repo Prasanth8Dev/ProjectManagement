@@ -1,5 +1,10 @@
 import api from './axios';
-import type { Project, ProjectStats, ProjectMember } from '@/types/project.types';
+import type {
+  Project,
+  ProjectStats,
+  ProjectMember,
+  ProjectProductivityStats,
+} from '@/types/project.types';
 import type { ActivityLog } from '@/types/activity.types';
 import type { ApiResponse, PaginationParams, PaginatedResponse } from '@/types/api.types';
 import type { CreateProjectInput, UpdateProjectInput } from '@/lib/validators/project.schema';
@@ -36,6 +41,12 @@ export async function archiveProject(id: string): Promise<Project> {
 
 export async function getProjectStats(id: string): Promise<ApiResponse<ProjectStats>> {
   return api.get(`/projects/${id}/stats`);
+}
+
+export async function getProjectProductivityStats(
+  id: string
+): Promise<ApiResponse<ProjectProductivityStats>> {
+  return api.get(`/projects/${id}/productivity`);
 }
 
 export async function addProjectMember(

@@ -103,6 +103,11 @@ export class ProjectsService {
     return this.projectsRepository.getStats(id);
   }
 
+  async getProductivityStats(id: string) {
+    await this.findById(id);
+    return this.projectsRepository.getProductivityStats(id);
+  }
+
   async addMember(projectId: string, addMemberDto: AddProjectMemberDto) {
     await this.findById(projectId);
     const existing = await this.projectsRepository.findMember(projectId, addMemberDto.userId);

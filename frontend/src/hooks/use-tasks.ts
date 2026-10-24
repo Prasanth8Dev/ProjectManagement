@@ -9,10 +9,22 @@ import {
   assignTask,
   changeTaskStatus,
   getTaskHistory,
+  getTaskActivity,
+  getTaskTimeTracking,
+  startTask,
+  pauseTask,
+  resumeTask,
+  blockTask,
+  unblockTask,
+  completeTask,
+  sendTaskForReview,
+  completeTaskReview,
+  closeTask,
   type TaskFilterParams,
 } from '@/lib/api/tasks.api';
 import type { CreateTaskInput, UpdateTaskInput } from '@/lib/validators/task.schema';
-import type { TaskStatus, TaskHistoryEntry } from '@/types/task.types';
+import type { TaskStatus, TaskActivityEvent, TaskTimeTracking } from '@/types/task.types';
+import type { ActivityLog } from '@/types/activity.types';
 
 export type { TaskFilterParams };
 
@@ -35,7 +47,23 @@ export const useTaskHistory = (id: string) =>
     queryKey: QUERY_KEYS.tasks.history(id),
     queryFn: () => getTaskHistory(id),
     enabled: !!id,
-    select: (d: any): TaskHistoryEntry[] => d?.data ?? d,
+    select: (d: any): TaskActivityEvent[] => d?.data ?? d,
+  });
+
+export const useTaskTimeTracking = (id: string) =>
+  useQuery({
+    queryKey: QUERY_KEYS.tasks.timeTracking(id),
+    queryFn: () => getTaskTimeTracking(id),
+    enabled: !!id,
+    select: (d: any): TaskTimeTracking => d?.data ?? d,
+  });
+
+export const useTaskActivity = (id: string) =>
+  useQuery({
+    queryKey: [...QUERY_KEYS.tasks.detail(id), 'activity'],
+    queryFn: () => getTaskActivity(id),
+    enabled: !!id,
+    select: (d: any): ActivityLog[] => d?.data ?? d,
   });
 
 export const useCreateTask = () => {
@@ -96,6 +124,50 @@ export const useChangeTaskStatus = (id: string) => {
     },
   });
 };
+
+function useTaskControlMutation<TArg = void>(
+  id: string,
+  mutationFn: (id: string, arg: TArg) => Promise<unknown>,
+) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (arg: TArg) => mutationFn(id, arg),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: QUERY_KEYS.tasks.detail(id) });
+      qc.invalidateQueries({ queryKey: QUERY_KEYS.tasks.history(id) });
+      qc.invalidateQueries({ queryKey: QUERY_KEYS.tasks.timeTracking(id) });
+      qc.invalidateQueries({ queryKey: QUERY_KEYS.tasks.lists() });
+      qc.invalidateQueries({ queryKey: QUERY_KEYS.dashboard.stats });
+    },
+  });
+}
+
+export const useStartTask = (id: string) =>
+  useTaskControlMutation<void>(id, () => startTask(id));
+
+export const usePauseTask = (id: string) =>
+  useTaskControlMutation<string | undefined>(id, (_id, reason) => pauseTask(id, reason));
+
+export const useResumeTask = (id: string) =>
+  useTaskControlMutation<void>(id, () => resumeTask(id));
+
+export const useBlockTask = (id: string) =>
+  useTaskControlMutation<string | undefined>(id, (_id, reason) => blockTask(id, reason));
+
+export const useUnblockTask = (id: string) =>
+  useTaskControlMutation<void>(id, () => unblockTask(id));
+
+export const useCompleteTask = (id: string) =>
+  useTaskControlMutation<string | undefined>(id, (_id, comment) => completeTask(id, comment));
+
+export const useSendTaskForReview = (id: string) =>
+  useTaskControlMutation<string | undefined>(id, (_id, comment) => sendTaskForReview(id, comment));
+
+export const useCompleteTaskReview = (id: string) =>
+  useTaskControlMutation<string | undefined>(id, (_id, comment) => completeTaskReview(id, comment));
+
+export const useCloseTask = (id: string) =>
+  useTaskControlMutation<string | undefined>(id, (_id, comment) => closeTask(id, comment));
 
 export const useSubtasks = (taskId: string) =>
   useQuery({

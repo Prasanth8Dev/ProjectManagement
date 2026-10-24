@@ -53,7 +53,30 @@ enum TaskStatus {
   IN_REVIEW
   TESTING
   DONE
+  CLOSED
   CANCELLED
+}
+
+// Fine-grained lifecycle event types for the immutable TaskActivity log.
+// Distinct from the coarse Kanban `TaskStatus` above — a task can be
+// IN_PROGRESS and separately paused/blocked without changing its status.
+enum TaskEventType {
+  TASK_CREATED
+  TASK_ASSIGNED
+  TASK_REASSIGNED
+  TASK_STARTED
+  TASK_PAUSED
+  TASK_RESUMED
+  TASK_BLOCKED
+  TASK_UNBLOCKED
+  TASK_COMPLETED
+  REVIEW_STARTED
+  REVIEW_COMPLETED
+  TASK_CLOSED
+  COMMENT_ADDED
+  STATUS_CHANGED
+  PRIORITY_CHANGED
+  ETA_CHANGED
 }
 
 enum TaskPriority {
@@ -167,11 +190,17 @@ model User {
   attachments       Attachment[]
   dailyUpdates      DailyWorkUpdate[]
   activityLogs      ActivityLog[]
-  taskHistories     TaskHistory[]
+  taskActivities    TaskActivity[]
+  bugHistories      BugHistory[]
   assignedBugs      Bug[]             @relation("BugAssignee")
   reportedBugs      Bug[]             @relation("BugReporter")
   notifications         Notification[]    @relation("NotificationRecipient")
   triggeredNotifications Notification[]   @relation("NotificationActor")
+  interventionsReceived Intervention[]    @relation("InterventionEmployee")
+  interventionsLogged   Intervention[]    @relation("InterventionManager")
+  organizedMeetings     Meeting[]         @relation("MeetingOrganizer")
+  meetingParticipations MeetingParticipant[]
+  assignedActionItems   MeetingActionItem[] @relation("ActionItemAssignee")
 
   @@index([email])
   @@index([role])
@@ -249,6 +278,7 @@ model Project {
   activityLogs ActivityLog[]
   dailyUpdates DailyWorkUpdateProject[]
   bugs        Bug[]
+  meetings    Meeting[]
 
   @@index([slug])
   @@index([status])
@@ -363,10 +393,18 @@ model Task {
   priority       TaskPriority @default(MEDIUM)
 
   startDate      DateTime?
-  dueDate        DateTime?
+  dueDate        DateTime?     // also used as the task's ETA
+  assignedAt     DateTime?     // set the first time an assignee is attached
+  startedAt      DateTime?     // set when work actually begins (Start Task)
   completedAt    DateTime?
   estimatedHours Float?
   actualHours    Float?
+
+  // Lifecycle flags — independent of `status` so a task can be paused or
+  // blocked while remaining IN_PROGRESS on the Kanban board.
+  isPaused       Boolean      @default(false)
+  isBlocked      Boolean      @default(false)
+  blockedReason  String?
 
   position       Int          @default(0) // Kanban ordering within column
   isArchived     Boolean      @default(false)
@@ -388,10 +426,12 @@ model Task {
   comments       Comment[]
   attachments    Attachment[]
   checklistItems ChecklistItem[]
-  history        TaskHistory[]
+  activityEvents TaskActivity[]
   activityLogs   ActivityLog[]
   dailyUpdateTasks DailyWorkUpdateTask[]
   linkedBugs     Bug[]           @relation("BugLinkedTask")
+  interventions  Intervention[]
+  linkedActionItem MeetingActionItem? @relation("ActionItemTask")
 
   @@index([projectId])
   @@index([assigneeId])
@@ -431,10 +471,11 @@ model ChecklistItem {
 // =============================================================================
 
 model Comment {
-  id        String    @id @default(uuid())
-  taskId    String?   // set when commenting on a Task
-  bugId     String?   // set when commenting on a Bug
-  authorId  String
+  id           String    @id @default(uuid())
+  taskId       String?   // set when commenting on a Task
+  bugId        String?   // set when commenting on a Bug
+  actionItemId String?   // set when commenting on a Meeting action item
+  authorId     String
   parentId  String?   // null = top-level comment; set = reply
 
   content   String
@@ -445,14 +486,16 @@ model Comment {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
-  task      Task?     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  bug       Bug?      @relation(fields: [bugId], references: [id], onDelete: Cascade)
-  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
-  replies   Comment[] @relation("CommentReplies")
+  task       Task?              @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  bug        Bug?               @relation(fields: [bugId], references: [id], onDelete: Cascade)
+  actionItem MeetingActionItem? @relation(fields: [actionItemId], references: [id], onDelete: Cascade)
+  author     User               @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parent     Comment?           @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies    Comment[]          @relation("CommentReplies")
 
   @@index([taskId])
   @@index([bugId])
+  @@index([actionItemId])
   @@index([authorId])
   @@index([parentId])
   @@map("comments")
@@ -491,24 +534,53 @@ model Attachment {
 // TASK HISTORY
 // =============================================================================
 
-model TaskHistory {
+// Immutable event log for a task's full lifecycle (assignment, start/pause/
+// block/review/complete/close, plus field changes and comments). Never
+// updated or deleted after creation — a correction is a new event, not an
+// edit to history. Time-tracking durations (active/paused/blocked/review
+// time) are derived from this table on read, never stored.
+model TaskActivity {
+  id            String        @id @default(uuid())
+  taskId        String
+  userId        String?       // null = system/automated action, no actor context
+
+  eventType     TaskEventType
+
+  previousValue String?
+  newValue      String?
+  reason        String?       // e.g. why a task was paused/blocked
+  comment       String?
+
+  createdAt     DateTime      @default(now())
+
+  task          Task          @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user          User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([taskId])
+  @@index([userId])
+  @@index([eventType])
+  @@index([createdAt])
+  @@map("task_activity")
+}
+
+model BugHistory {
   id        String   @id @default(uuid())
-  taskId    String
+  bugId     String
   userId    String
 
-  field     String   // "status", "assignee", "priority", "dueDate", etc.
+  field     String   // "status", "assignee", etc.
   oldValue  String?
   newValue  String?
 
   createdAt DateTime @default(now())
 
-  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  bug       Bug      @relation(fields: [bugId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([taskId])
+  @@index([bugId])
   @@index([userId])
   @@index([createdAt])
-  @@map("task_history")
+  @@map("bug_history")
 }
 
 // =============================================================================
@@ -553,6 +625,15 @@ enum NotificationType {
   TASK_COMMENT
   BUG_COMMENT
   BUG_LINKED_TO_TASK
+  INTERVENTION_LOGGED
+  TASK_BLOCKED
+  TASK_UNBLOCKED
+  TASK_ETA_APPROACHING
+  TASK_OVERDUE
+  TASK_COMPLETED
+  REVIEW_REQUESTED
+  MOM_ACTION_ITEM_ASSIGNED
+  MOM_ACTION_ITEM_DUE_SOON
 }
 
 model Notification {
@@ -568,6 +649,8 @@ model Notification {
   taskId    String?
   bugId     String?
   commentId String?
+  meetingId String?
+  actionItemId String?
 
   isRead    Boolean          @default(false)
   readAt    DateTime?
@@ -581,6 +664,37 @@ model Notification {
   @@index([userId, isRead])
   @@index([createdAt])
   @@map("notifications")
+}
+
+// =============================================================================
+// INTERVENTION
+// =============================================================================
+// A manual log a manager/lead can attach to a task or bug when they had to
+// step in — clarify requirements, redo part of the work themselves, chase
+// progress, etc. Feeds the "micromanagement / intervention" signal on the
+// employee performance pages. Intentionally simple: just a note, no category.
+
+model Intervention {
+  id         String   @id @default(uuid())
+  taskId     String?
+  bugId      String?
+  employeeId String   // who the intervention was about
+  managerId  String   // who logged it
+
+  note       String
+
+  createdAt  DateTime @default(now())
+
+  task       Task?    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  bug        Bug?     @relation(fields: [bugId], references: [id], onDelete: Cascade)
+  employee   User     @relation("InterventionEmployee", fields: [employeeId], references: [id], onDelete: Cascade)
+  manager    User     @relation("InterventionManager", fields: [managerId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@index([bugId])
+  @@index([employeeId])
+  @@index([createdAt])
+  @@map("interventions")
 }
 
 // =============================================================================
@@ -668,6 +782,8 @@ model Bug {
   reporter          User         @relation("BugReporter", fields: [reporterId], references: [id], onDelete: Cascade)
   linkedTask        Task?        @relation("BugLinkedTask", fields: [linkedTaskId], references: [id], onDelete: SetNull)
   comments          Comment[]
+  history           BugHistory[]
+  interventions     Intervention[]
 
   @@index([projectId])
   @@index([assigneeId])
@@ -695,4 +811,91 @@ model DailyWorkUpdateProject {
   @@index([updateId])
   @@index([projectId])
   @@map("daily_work_update_projects")
+}
+
+// =============================================================================
+// MEETINGS / MOM (Minutes of Meeting)
+// =============================================================================
+
+enum MeetingType {
+  STANDUP
+  SPRINT_PLANNING
+  SPRINT_REVIEW
+  CLIENT_MEETING
+  TECHNICAL_DISCUSSION
+  RCA
+  GENERAL
+}
+
+enum ActionItemStatus {
+  OPEN
+  IN_PROGRESS
+  DONE
+  CONVERTED // has a linked Task — see MeetingActionItem.taskId
+}
+
+model Meeting {
+  id          String      @id @default(uuid())
+  projectId   String
+  title       String
+  type        MeetingType @default(GENERAL)
+  scheduledAt DateTime
+  duration    Int?        // minutes
+  organizerId String?
+  description String?     // agenda
+
+  // MOM editor — filled in after the meeting happens
+  momSummary       String?
+  discussionPoints String?
+  decisionsMade    String?
+  risksBlockers    String?
+  additionalNotes  String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project      Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  organizer    User?                @relation("MeetingOrganizer", fields: [organizerId], references: [id], onDelete: SetNull)
+  participants MeetingParticipant[]
+  actionItems  MeetingActionItem[]
+
+  @@index([projectId])
+  @@index([scheduledAt])
+  @@map("meetings")
+}
+
+model MeetingParticipant {
+  meetingId String
+  userId    String
+
+  meeting   Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([meetingId, userId])
+  @@index([userId])
+  @@map("meeting_participants")
+}
+
+model MeetingActionItem {
+  id          String            @id @default(uuid())
+  meetingId   String
+  title       String
+  description String?
+  assigneeId  String?
+  priority    TaskPriority      @default(MEDIUM)
+  dueDate     DateTime?
+  status      ActionItemStatus  @default(OPEN)
+  taskId      String?           @unique // set once converted to a Task
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  meeting     Meeting   @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  assignee    User?     @relation("ActionItemAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  task        Task?     @relation("ActionItemTask", fields: [taskId], references: [id], onDelete: SetNull)
+  comments    Comment[]
+
+  @@index([meetingId])
+  @@index([assigneeId])
+  @@map("meeting_action_items")
 }

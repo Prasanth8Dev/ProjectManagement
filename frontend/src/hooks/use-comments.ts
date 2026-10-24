@@ -6,6 +6,8 @@ import {
   createComment,
   getBugComments,
   createBugComment,
+  getActionItemComments,
+  createActionItemComment,
   updateComment,
   deleteComment,
   type CreateCommentInput,
@@ -48,6 +50,25 @@ export const useCreateBugComment = (bugId: string) => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: QUERY_KEYS.bugs.comments(bugId) });
       qc.invalidateQueries({ queryKey: QUERY_KEYS.bugs.detail(bugId) });
+    },
+  });
+};
+
+export const useActionItemComments = (actionItemId: string) =>
+  useQuery({
+    queryKey: QUERY_KEYS.actionItems.comments(actionItemId),
+    queryFn: () => getActionItemComments(actionItemId),
+    enabled: !!actionItemId,
+    staleTime: 15_000,
+    select: (d: any): Comment[] => d?.data ?? d,
+  });
+
+export const useCreateActionItemComment = (actionItemId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CreateCommentInput) => createActionItemComment(actionItemId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: QUERY_KEYS.actionItems.comments(actionItemId) });
     },
   });
 };

@@ -4,9 +4,10 @@ import { TasksService } from './tasks.service';
 import { TasksRepository } from './tasks.repository';
 import { ActivityModule } from '../activity/activity.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { UsersModule } from '../users/users.module';
 
 @Module({
-  imports: [ActivityModule, NotificationsModule],
+  imports: [ActivityModule, NotificationsModule, UsersModule],
   controllers: [TasksController],
   providers: [TasksService, TasksRepository],
   exports: [TasksService, TasksRepository],

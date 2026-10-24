@@ -106,7 +106,7 @@ export class BugsService {
     if (dto.assigneeId !== undefined) data.assigneeId = dto.assigneeId ?? null;
     if (dto.linkedTaskId !== undefined) data.linkedTaskId = dto.linkedTaskId ?? null;
 
-    if (dto.status !== undefined) {
+    if (dto.status !== undefined && dto.status !== existing.status) {
       data.status = dto.status;
       if (dto.status === 'RESOLVED') {
         data.resolvedAt = new Date();
@@ -116,6 +116,28 @@ export class BugsService {
         // Going back to an open state clears any prior resolution/closure timestamps.
         data.resolvedAt = null;
         data.closedAt = null;
+      }
+
+      if (actorUserId) {
+        await this.bugsRepository.createHistory({
+          bugId: id,
+          userId: actorUserId,
+          field: 'status',
+          oldValue: existing.status,
+          newValue: dto.status,
+        });
+      }
+    }
+
+    if (dto.assigneeId !== undefined && dto.assigneeId !== existing.assigneeId) {
+      if (actorUserId) {
+        await this.bugsRepository.createHistory({
+          bugId: id,
+          userId: actorUserId,
+          field: 'assignee',
+          oldValue: existing.assigneeId || undefined,
+          newValue: dto.assigneeId || undefined,
+        });
       }
     }
 
@@ -148,6 +170,16 @@ export class BugsService {
     const existing = await this.findById(id);
     const updated = await this.bugsRepository.update(id, { assigneeId: dto.assigneeId ?? null } as any);
 
+    if (actorUserId && dto.assigneeId !== existing.assigneeId) {
+      await this.bugsRepository.createHistory({
+        bugId: id,
+        userId: actorUserId,
+        field: 'assignee',
+        oldValue: existing.assigneeId || undefined,
+        newValue: dto.assigneeId || undefined,
+      });
+    }
+
     if (dto.assigneeId && dto.assigneeId !== existing.assigneeId) {
       await this.notificationsService.notify({
         userId: dto.assigneeId,
@@ -163,7 +195,7 @@ export class BugsService {
   }
 
   async changeStatus(id: string, dto: ChangeBugStatusDto, actorUserId?: string) {
-    await this.findById(id);
+    const existing = await this.findById(id);
     const data: Record<string, unknown> = { status: dto.status };
     if (dto.status === 'RESOLVED') data.resolvedAt = new Date();
     if (dto.status === 'CLOSED' || dto.status === 'WONT_FIX') data.closedAt = new Date();
@@ -171,7 +203,24 @@ export class BugsService {
       data.resolvedAt = null;
       data.closedAt = null;
     }
-    return this.bugsRepository.update(id, data as any);
+    const updated = await this.bugsRepository.update(id, data as any);
+
+    if (actorUserId && dto.status !== existing.status) {
+      await this.bugsRepository.createHistory({
+        bugId: id,
+        userId: actorUserId,
+        field: 'status',
+        oldValue: existing.status,
+        newValue: dto.status,
+      });
+    }
+
+    return updated;
+  }
+
+  async getHistory(id: string) {
+    await this.findById(id);
+    return this.bugsRepository.getHistory(id);
   }
 
   /**

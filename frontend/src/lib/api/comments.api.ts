@@ -28,6 +28,17 @@ export async function createBugComment(bugId: string, data: CreateCommentInput):
   return api.post(`/bugs/${bugId}/comments`, data);
 }
 
+export async function getActionItemComments(actionItemId: string): Promise<Comment[]> {
+  return api.get(`/action-items/${actionItemId}/comments`);
+}
+
+export async function createActionItemComment(
+  actionItemId: string,
+  data: CreateCommentInput
+): Promise<Comment> {
+  return api.post(`/action-items/${actionItemId}/comments`, data);
+}
+
 // Edit/delete operate on a comment by its own id — the backend doesn't scope
 // these routes under the parent task/bug, so no taskId/bugId is needed here.
 export async function updateComment(

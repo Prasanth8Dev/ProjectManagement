@@ -9,11 +9,13 @@ import {
   assignBug,
   changeBugStatus,
   convertBugToTask,
+  getBugHistory,
   type BugFilterParams,
   type CreateBugInput,
   type UpdateBugInput,
 } from '@/lib/api/bugs.api';
 import type { BugStatus } from '@/types/bug.types';
+import type { BugHistoryEntry } from '@/types/bug-history.types';
 
 export type { BugFilterParams };
 
@@ -83,6 +85,14 @@ export const useChangeBugStatus = (id: string) => {
     },
   });
 };
+
+export const useBugHistory = (id: string) =>
+  useQuery({
+    queryKey: [...QUERY_KEYS.bugs.detail(id), 'history'],
+    queryFn: () => getBugHistory(id),
+    enabled: !!id,
+    select: (d: any): BugHistoryEntry[] => d?.data ?? d,
+  });
 
 export const useConvertBugToTask = (id: string) => {
   const qc = useQueryClient();

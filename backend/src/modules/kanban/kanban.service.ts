@@ -76,11 +76,11 @@ export class KanbanService {
     );
 
     if (oldStatus !== dto.newStatus && dto.actorUserId) {
-      await this.kanbanRepository.createHistory({
+      await this.kanbanRepository.createActivity({
         taskId: dto.taskId,
         userId: dto.actorUserId,
-        field: 'status',
-        oldValue: oldStatus,
+        eventType: 'STATUS_CHANGED',
+        previousValue: oldStatus,
         newValue: dto.newStatus,
       });
 

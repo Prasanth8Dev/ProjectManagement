@@ -25,7 +25,11 @@ import { TaskChecklist } from '@/components/features/tasks/task-checklist';
 import { TaskSubtasks } from '@/components/features/tasks/task-subtasks';
 import { TaskAttachments } from '@/components/features/tasks/task-attachments';
 import { TaskComments } from '@/components/features/tasks/task-comments';
-import { TaskHistory } from '@/components/features/tasks/task-history';
+import { TaskActivityTimeline } from '@/components/features/tasks/task-activity-timeline';
+import { TaskTimeTrackingCard } from '@/components/features/tasks/task-time-tracking-card';
+import { TaskControls } from '@/components/features/tasks/task-controls';
+import { LogInterventionButton } from '@/components/features/interventions/log-intervention-button';
+import { Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { extractApiError } from '@/lib/utils/error';
 import { TASK_STATUS_CONFIG } from '@/constants/task-statuses';
@@ -188,6 +192,36 @@ export default function TaskDetailPage() {
   }
 
   return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+        <span className="font-mono text-xs">#{id.slice(0, 8)}</span>
+        {task && (
+          <>
+            <span
+              className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${TASK_STATUS_CONFIG[task.status].bgColor} ${TASK_STATUS_CONFIG[task.status].color}`}
+            >
+              {TASK_STATUS_CONFIG[task.status].label}
+            </span>
+            <span
+              className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${TASK_PRIORITY_CONFIG[task.priority]?.bgColor ?? ''} ${TASK_PRIORITY_CONFIG[task.priority]?.color ?? ''}`}
+            >
+              {TASK_PRIORITY_CONFIG[task.priority]?.label ?? task.priority}
+            </span>
+            {task.isPaused && (
+              <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                Paused
+              </span>
+            )}
+            {task.isBlocked && (
+              <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                Blocked{task.blockedReason ? `: ${task.blockedReason}` : ''}
+              </span>
+            )}
+          </>
+        )}
+      </div>
+
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Left column */}
       <div className="lg:col-span-2 space-y-6">
@@ -203,6 +237,20 @@ export default function TaskDetailPage() {
             />
           </CardContent>
         </Card>
+
+        {task && (
+          <Card>
+            <CardContent className="pt-6">
+              <TaskControls
+                taskId={id}
+                status={task.status}
+                isPaused={task.isPaused}
+                isBlocked={task.isBlocked}
+                hasAssignee={!!(task.assigneeId ?? task.assignee?.id)}
+              />
+            </CardContent>
+          </Card>
+        )}
 
         <TaskChecklist taskId={id} />
         <TaskSubtasks taskId={id} projectId={projectId ?? ''} />
@@ -389,23 +437,46 @@ export default function TaskDetailPage() {
           </CardContent>
         </Card>
 
-        {/* Task History (collapsible) */}
-        <Collapsible>
+        {/* Time Tracking */}
+        <Card>
+          <CardHeader className="py-3">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <Clock className="w-4 h-4 text-muted-foreground" />
+              Time Tracking
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <TaskTimeTrackingCard taskId={id} />
+          </CardContent>
+        </Card>
+
+        {/* Task Activity Timeline (collapsible) */}
+        <Collapsible defaultOpen>
           <Card>
             <CardHeader className="py-3">
-              <CollapsibleTrigger className="flex items-center justify-between w-full text-sm font-semibold">
-                History
-                <ChevronDown className="w-4 h-4 text-muted-foreground" />
-              </CollapsibleTrigger>
+              <div className="flex items-center justify-between gap-2">
+                <CollapsibleTrigger className="flex items-center gap-2 text-sm font-semibold flex-1">
+                  Activity Timeline
+                  <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                </CollapsibleTrigger>
+                {task && (
+                  <LogInterventionButton
+                    scope="task"
+                    entityId={id}
+                    employeeId={task.assigneeId ?? task.assignee?.id}
+                  />
+                )}
+              </div>
             </CardHeader>
             <CollapsibleContent>
               <CardContent className="pt-0">
-                <TaskHistory taskId={id} />
+                <TaskActivityTimeline taskId={id} />
               </CardContent>
             </CollapsibleContent>
           </Card>
         </Collapsible>
       </div>
+    </div>
     </div>
   );
 }

@@ -24,6 +24,7 @@ const COLUMN_BORDER_COLORS: Record<TaskStatus, string> = {
   IN_REVIEW: 'border-l-purple-400',
   TESTING: 'border-l-orange-400',
   DONE: 'border-l-green-400',
+  CLOSED: 'border-l-slate-500',
   CANCELLED: 'border-l-red-400',
 };
 

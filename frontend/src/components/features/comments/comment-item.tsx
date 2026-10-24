@@ -23,18 +23,27 @@ interface CommentItemProps {
   comment: Comment;
   taskId?: string;
   bugId?: string;
+  actionItemId?: string;
   level?: number;
 }
 
-export function CommentItem({ comment, taskId, bugId, level = 0 }: CommentItemProps) {
+export function CommentItem({ comment, taskId, bugId, actionItemId, level = 0 }: CommentItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(comment.content);
   const [showReplyInput, setShowReplyInput] = useState(false);
   const [showReplies, setShowReplies] = useState(false);
   const { currentUser } = useAuthStore();
 
-  const invalidateKey = bugId ? QUERY_KEYS.bugs.comments(bugId) : QUERY_KEYS.tasks.comments(taskId ?? '');
-  const detailKey = bugId ? QUERY_KEYS.bugs.detail(bugId) : QUERY_KEYS.tasks.detail(taskId ?? '');
+  const invalidateKey = actionItemId
+    ? QUERY_KEYS.actionItems.comments(actionItemId)
+    : bugId
+      ? QUERY_KEYS.bugs.comments(bugId)
+      : QUERY_KEYS.tasks.comments(taskId ?? '');
+  const detailKey = actionItemId
+    ? undefined
+    : bugId
+      ? QUERY_KEYS.bugs.detail(bugId)
+      : QUERY_KEYS.tasks.detail(taskId ?? '');
   const { mutate: updateComment, isPending: isUpdating } = useUpdateComment(invalidateKey);
   const { mutate: deleteComment, isPending: isDeleting } = useDeleteComment(invalidateKey, detailKey);
 
@@ -209,6 +218,7 @@ export function CommentItem({ comment, taskId, bugId, level = 0 }: CommentItemPr
           <CommentInput
             taskId={taskId}
             bugId={bugId}
+            actionItemId={actionItemId}
             parentId={comment.id}
             autoFocus
             onSuccess={() => {
@@ -229,6 +239,7 @@ export function CommentItem({ comment, taskId, bugId, level = 0 }: CommentItemPr
               comment={reply}
               taskId={taskId}
               bugId={bugId}
+              actionItemId={actionItemId}
               level={level + 1}
             />
           ))}
