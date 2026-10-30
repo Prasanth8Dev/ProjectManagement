@@ -9,6 +9,8 @@ import {
   getTodayUpdate,
   getDailyReport,
   getWeeklyReport,
+  getDailyUpdateReplies,
+  createDailyUpdateReply,
   type DailyUpdateFilterParams,
   type DailyReportParams,
   type WeeklyReportParams,
@@ -84,3 +86,22 @@ export const useWeeklyReport = (params: WeeklyReportParams) =>
     enabled: !!params.startDate && !!params.endDate,
     staleTime: 60_000,
   });
+
+export const useDailyUpdateReplies = (id: string) =>
+  useQuery({
+    queryKey: QUERY_KEYS.dailyUpdates.replies(id),
+    queryFn: () => getDailyUpdateReplies(id),
+    enabled: !!id,
+    staleTime: 15_000,
+    select: (d: any) => (d?.data ?? d ?? []) as import('@/lib/api/daily-updates.api').DailyUpdateReply[],
+  });
+
+export const useCreateDailyUpdateReply = (id: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { content: string; authorId: string }) => createDailyUpdateReply(id, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: QUERY_KEYS.dailyUpdates.replies(id) });
+    },
+  });
+};

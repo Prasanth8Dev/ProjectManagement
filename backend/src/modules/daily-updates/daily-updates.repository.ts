@@ -191,4 +191,21 @@ export class DailyUpdatesRepository {
   async delete(id: string) {
     return this.prisma.dailyWorkUpdate.delete({ where: { id } });
   }
+
+  // --- Replies ---
+
+  async findReplies(dailyUpdateId: string) {
+    return this.prisma.dailyWorkUpdateReply.findMany({
+      where: { dailyUpdateId },
+      include: { author: { select: { id: true, name: true, avatar: true, role: true, jobTitle: true } } },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  async createReply(data: { dailyUpdateId: string; authorId: string; content: string }) {
+    return this.prisma.dailyWorkUpdateReply.create({
+      data,
+      include: { author: { select: { id: true, name: true, avatar: true, role: true, jobTitle: true } } },
+    });
+  }
 }

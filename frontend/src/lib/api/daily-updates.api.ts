@@ -57,3 +57,23 @@ export async function getDailyReport(params: DailyReportParams): Promise<unknown
 export async function getWeeklyReport(params: WeeklyReportParams): Promise<unknown> {
   return api.get('/reports/weekly', { params });
 }
+
+export interface DailyUpdateReply {
+  id: string;
+  dailyUpdateId: string;
+  authorId: string;
+  content: string;
+  createdAt: string;
+  author: { id: string; name: string; avatar?: string | null; role: string; jobTitle?: string | null };
+}
+
+export async function getDailyUpdateReplies(id: string): Promise<ApiResponse<DailyUpdateReply[]>> {
+  return api.get(`/daily-updates/${id}/replies`);
+}
+
+export async function createDailyUpdateReply(
+  id: string,
+  data: { content: string; authorId: string }
+): Promise<ApiResponse<DailyUpdateReply>> {
+  return api.post(`/daily-updates/${id}/replies`, data);
+}

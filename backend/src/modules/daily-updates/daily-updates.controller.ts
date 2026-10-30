@@ -17,6 +17,7 @@ import {
   CreateDailyUpdateDto,
   UpdateDailyUpdateDto,
   DailyUpdateFilterDto,
+  CreateDailyUpdateReplyDto,
 } from './dto/daily-update.dto';
 
 @ApiTags('Daily Updates')
@@ -70,6 +71,23 @@ export class DailyUpdatesController {
   @ApiResponse({ status: 200, description: 'Daily update retrieved successfully' })
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.dailyUpdatesService.findById(id);
+  }
+
+  @Get(':id/replies')
+  @ApiOperation({ summary: 'List replies on a daily update' })
+  @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
+  getReplies(@Param('id', ParseUUIDPipe) id: string) {
+    return this.dailyUpdatesService.getReplies(id);
+  }
+
+  @Post(':id/replies')
+  @ApiOperation({ summary: 'Reply to a daily update (Admin/Manager/PM, or the update author)' })
+  @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
+  createReply(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: CreateDailyUpdateReplyDto,
+  ) {
+    return this.dailyUpdatesService.createReply(id, dto.authorId, dto.content);
   }
 
   @Patch(':id')

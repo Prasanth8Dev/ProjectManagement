@@ -19,3 +19,6 @@ export interface User {
   createdAt: string;
   updatedAt: string;
 }
+
+/** Roles allowed to reply to other people's daily work updates (CTOs use ADMIN). */
+export const UPDATE_REPLY_ROLES: UserRole[] = ['ADMIN', 'MANAGER', 'PROJECT_MANAGER'];

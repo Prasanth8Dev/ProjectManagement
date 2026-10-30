@@ -11,6 +11,8 @@ import {
   Min,
   Max,
   IsInt,
+  IsNotEmpty,
+  MaxLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
@@ -156,4 +158,16 @@ export class DailyUpdateFilterDto extends PaginationDto {
   @IsOptional()
   @IsDateString()
   dateTo?: string;
+}
+
+export class CreateDailyUpdateReplyDto {
+  @ApiProperty({ example: 'Great progress — please prioritise the data binding check.' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(2000)
+  content: string;
+
+  @ApiProperty({ description: 'User id of the replier' })
+  @IsUUID()
+  authorId: string;
 }

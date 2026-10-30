@@ -14,6 +14,8 @@ import {
   CheckCircle2,
   Eye,
   ListChecks,
+  Reply,
+  Hand,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -49,6 +51,8 @@ const TYPE_ICON: Record<NotificationType, React.ComponentType<{ className?: stri
   REVIEW_REQUESTED: Eye,
   MOM_ACTION_ITEM_ASSIGNED: ListChecks,
   MOM_ACTION_ITEM_DUE_SOON: CalendarClock,
+  DAILY_UPDATE_REPLY: Reply,
+  INTERVENTION_LOGGED: Hand,
 };
 
 export function NotificationBell() {

@@ -8,4 +8,6 @@ export {
   useDeleteDailyUpdate,
   useDailyReport,
   useWeeklyReport,
+  useDailyUpdateReplies,
+  useCreateDailyUpdateReply,
 } from './use-daily-updates';

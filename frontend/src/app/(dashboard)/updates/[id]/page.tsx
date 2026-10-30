@@ -18,6 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { UpdateReplies } from '@/components/features/updates/update-replies';
 import { cn } from '@/lib/utils/cn';
 
 const MOOD_EMOJIS: Record<string, string> = {
@@ -226,6 +227,11 @@ export default function UpdateDetailPage() {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Replies from leadership */}
+      {update && (
+        <UpdateReplies updateId={update.id} updateAuthorId={update.user?.id} />
       )}
     </div>
   );

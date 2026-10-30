@@ -52,6 +52,7 @@ export const QUERY_KEYS = {
     list: (params?: object) => [...QUERY_KEYS.dailyUpdates.all, 'list', params] as const,
     detail: (id: string) => [...QUERY_KEYS.dailyUpdates.all, id] as const,
     today: (userId: string) => [...QUERY_KEYS.dailyUpdates.all, 'today', userId] as const,
+    replies: (id: string) => [...QUERY_KEYS.dailyUpdates.all, id, 'replies'] as const,
   },
   milestones: {
     list: (projectId: string) => ['milestones', projectId] as const,

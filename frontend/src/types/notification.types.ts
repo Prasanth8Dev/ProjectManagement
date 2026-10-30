@@ -12,7 +12,9 @@ export type NotificationType =
   | 'TASK_COMPLETED'
   | 'REVIEW_REQUESTED'
   | 'MOM_ACTION_ITEM_ASSIGNED'
-  | 'MOM_ACTION_ITEM_DUE_SOON';
+  | 'MOM_ACTION_ITEM_DUE_SOON'
+  | 'DAILY_UPDATE_REPLY'
+  | 'INTERVENTION_LOGGED';
 
 export interface NotificationActor {
   id: string;
@@ -34,6 +36,7 @@ export interface AppNotification {
   commentId?: string | null;
   meetingId?: string | null;
   actionItemId?: string | null;
+  dailyUpdateId?: string | null;
   isRead: boolean;
   readAt?: string | null;
   createdAt: string;

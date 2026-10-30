@@ -1,4 +1,6 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, ForbiddenException } from '@nestjs/common';
+import { NotificationsService } from '../notifications/notifications.service';
+import { UsersService } from '../users/users.service';
 import { DailyUpdatesRepository } from './daily-updates.repository';
 import {
   CreateDailyUpdateDto,
@@ -8,9 +10,73 @@ import {
 import { createPaginatedResponse } from '../../common/utils/pagination.util';
 import { startOfDay, endOfDay, startOfWeek, endOfWeek } from '../../common/utils/date.util';
 
+const REPLY_ROLES = ['ADMIN', 'MANAGER', 'PROJECT_MANAGER'];
+
 @Injectable()
 export class DailyUpdatesService {
-  constructor(private readonly dailyUpdatesRepository: DailyUpdatesRepository) {}
+  constructor(
+    private readonly dailyUpdatesRepository: DailyUpdatesRepository,
+    private readonly notificationsService: NotificationsService,
+    private readonly usersService: UsersService,
+  ) {}
+
+  async getReplies(updateId: string) {
+    await this.findById(updateId);
+    return this.dailyUpdatesRepository.findReplies(updateId);
+  }
+
+  /**
+   * Leadership (Admin / Manager / Project Manager — CTOs use the Admin role)
+   * may reply to any update; the update's author may reply back.
+   */
+  async createReply(updateId: string, authorId: string, content: string) {
+    const update = await this.findById(updateId);
+    const author = await this.usersService.findById(authorId).catch(() => null);
+    if (!author) throw new ForbiddenException('Unknown user.');
+
+    const isLeadership = REPLY_ROLES.includes(author.role);
+    if (!isLeadership && update.userId !== authorId) {
+      throw new ForbiddenException('Only Admins, Managers and Project Managers can reply to work updates.');
+    }
+
+    const reply = await this.dailyUpdatesRepository.createReply({
+      dailyUpdateId: updateId,
+      authorId,
+      content,
+    });
+
+    if (update.userId !== authorId) {
+      // Leadership replied -> tell the update's author.
+      await this.notificationsService.notify({
+        userId: update.userId,
+        actorId: authorId,
+        type: 'DAILY_UPDATE_REPLY',
+        title: `${author.name} replied to your work update`,
+        message: content.length > 120 ? content.slice(0, 117) + '...' : content,
+        link: `/updates/${updateId}`,
+        dailyUpdateId: updateId,
+      });
+    } else {
+      // Author replied back -> tell everyone else who has replied.
+      const others = new Set(
+        (await this.dailyUpdatesRepository.findReplies(updateId))
+          .map((r) => r.authorId)
+          .filter((id) => id !== authorId),
+      );
+      for (const userId of others) {
+        await this.notificationsService.notify({
+          userId,
+          actorId: authorId,
+          type: 'DAILY_UPDATE_REPLY',
+          title: `${author.name} replied on their work update`,
+          link: `/updates/${updateId}`,
+          dailyUpdateId: updateId,
+        });
+      }
+    }
+
+    return reply;
+  }
 
   async findAll(filterDto: DailyUpdateFilterDto) {
     const { page = 1, limit = 20, userId, projectId, dateFrom, dateTo, sortOrder } = filterDto;

@@ -189,6 +189,7 @@ model User {
   comments          Comment[]
   attachments       Attachment[]
   dailyUpdates      DailyWorkUpdate[]
+  dailyUpdateReplies DailyWorkUpdateReply[]
   activityLogs      ActivityLog[]
   taskActivities    TaskActivity[]
   bugHistories      BugHistory[]
@@ -634,6 +635,7 @@ enum NotificationType {
   REVIEW_REQUESTED
   MOM_ACTION_ITEM_ASSIGNED
   MOM_ACTION_ITEM_DUE_SOON
+  DAILY_UPDATE_REPLY
 }
 
 model Notification {
@@ -651,6 +653,7 @@ model Notification {
   commentId String?
   meetingId String?
   actionItemId String?
+  dailyUpdateId String?
 
   isRead    Boolean          @default(false)
   readAt    DateTime?
@@ -721,6 +724,8 @@ model DailyWorkUpdate {
   tasks          DailyWorkUpdateTask[]
   // Many-to-many with projects
   projects       DailyWorkUpdateProject[]
+  // Leadership replies
+  replies        DailyWorkUpdateReply[]
 
   @@unique([userId, date])            // One update per user per day
   @@index([userId])
@@ -898,4 +903,21 @@ model MeetingActionItem {
   @@index([meetingId])
   @@index([assigneeId])
   @@map("meeting_action_items")
+}
+
+// A reply on a daily work update — written by leadership (Admin/Manager/PM),
+// or by the update's author replying back.
+model DailyWorkUpdateReply {
+  id            String   @id @default(uuid())
+  dailyUpdateId String
+  authorId      String
+  content       String
+  createdAt     DateTime @default(now())
+
+  dailyUpdate   DailyWorkUpdate @relation(fields: [dailyUpdateId], references: [id], onDelete: Cascade)
+  author        User            @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([dailyUpdateId])
+  @@index([authorId])
+  @@map("daily_work_update_replies")
 }
